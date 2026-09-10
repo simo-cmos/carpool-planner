@@ -11,8 +11,7 @@ Self-hosted: it runs on your machine and stores everything in a local SQLite fil
 account, no cloud service, no telemetry. The app calls itself *Drivers Manager* — same
 project, older name.
 
-![The Plan page: the map with both optimized routes, and the Results tab showing driver
-scores and candidate driver sets](docs/screenshots/hero-plan.png)
+![Cars, a taxi and a bike driving along the road strip on the app's home page](docs/screenshots/home-road.gif)
 
 ## What it does
 
@@ -31,23 +30,33 @@ scores and candidate driver sets](docs/screenshots/hero-plan.png)
 
 ## Screenshots
 
-Home keeps tonight's trip to one screen and one next action:
+The Plan page: the map with both optimized routes, and the Results tab scoring every
+candidate driver set.
 
-![Home page: destination sign, trip counters and the next action](docs/screenshots/home.png)
+[![The Plan page: map with optimized routes next to the Results tab of driver scores and candidate driver sets](docs/screenshots/hero-plan.png)](docs/screenshots/hero-plan.png)
 
-![Traffic driving along the road strip at the bottom of the home page](docs/screenshots/home-road.gif)
+<table>
+<tr>
+<td width="25%" valign="top" align="center">
+<a href="docs/screenshots/home.png"><img src="docs/screenshots/home.png" alt="Home page: destination sign, trip counters and the next action" width="100%"></a>
+<br><sub><b>Home</b> — tonight's trip, one next action</sub>
+</td>
+<td width="25%" valign="top" align="center">
+<a href="docs/screenshots/share.png"><img src="docs/screenshots/share.png" alt="Share page: per-driver pickup messages with copy and WhatsApp buttons" width="100%"></a>
+<br><sub><b>Share</b> — one message per driver</sub>
+</td>
+<td width="25%" valign="top" align="center">
+<a href="docs/screenshots/share-report.png"><img src="docs/screenshots/share-report.png" alt="Share report: route overview map, driver routes, distances and costs" width="100%"></a>
+<br><sub><b>Report</b> — routes, legs and costs</sub>
+</td>
+<td width="25%" valign="top" align="center">
+<a href="docs/screenshots/invite-mobile.png"><img src="docs/screenshots/invite-mobile.png" alt="Guest invite form on a phone: destination, pickup choice, driving setup, food stop vote" width="100%"></a>
+<br><sub><b>Invite</b> — guests reply from a phone</sub>
+</td>
+</tr>
+</table>
 
-Share turns the plan into one message per driver, ready for WhatsApp:
-
-![Share page: per-driver pickup messages with copy and WhatsApp buttons](docs/screenshots/share.png)
-
-The share report is the whole plan on one page — route overview, per-driver legs, costs:
-
-![Share report: route overview map, driver routes, distances and costs](docs/screenshots/share-report.png)
-
-Guests get a link, not an account, and fill it in from their phone:
-
-<img src="docs/screenshots/invite-mobile.png" alt="Guest invite form on a phone: destination, pickup choice, driving setup, food stop vote" width="360">
+Click any image to open it full size.
 
 ## Quick Start
 
