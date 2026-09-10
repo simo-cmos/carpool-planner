@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="{{ current_language }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Drivers Manager</title>
+    <meta name="description" content="Plan carpools together: drivers, routes, meetup spots, guest invites, and food stops along the way.">
+    <meta name="theme-color" content="#0E7C3F">
+    <script>(function () {
+        var theme = null;
+        try { theme = window.localStorage.getItem("dmproject.theme"); } catch (_e) { /* storage may be blocked */ }
+        if (theme !== "dark" && theme !== "light") {
+            theme = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        }
+        document.documentElement.dataset.theme = theme;
+    }());</script>
+    <link rel="manifest" href="/manifest.webmanifest">
+    <link rel="icon" type="image/png" href="{{ url_for('static', path='/app-icon-192.png') }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', path='/apple-touch-icon.png') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Overpass:wght@600;700;800&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
+    <link rel="stylesheet" href="{{ url_for('static', path='/style.css') }}?v={{ static_asset_version }}">
+</head>
+<body>
+    <main class="page" data-scroll-target="{{ scroll_target if scroll_target else '' }}" data-active-tab="{{ active_tab }}">
+        {% set is_home = active_page == 'home' %}
+        {% set is_plan = active_page == 'plan' %}
+        {% set is_share = active_page == 'share' %}
+        {% set is_trips = active_page == 'trips' %}
+        {% set is_settings = active_page == 'settings' %}
+
+        {% include "_topbar.html" %}
+        {% include "_pictograms.html" %}
+        <aside class="rail rail-left" aria-hidden="true">
+            <span class="rail-sign rail-sign-blue">P</span>
+            <span class="rail-sign rail-sign-brown"><svg class="pic"><use href="#pic-burger"/></svg></span>
+            <span class="rail-sign rail-sign-green">➚</span>
+        </aside>
+        <aside class="rail rail-right" aria-hidden="true">
+            <span class="rail-sign rail-sign-blue"><svg class="pic"><use href="#pic-casello"/></svg></span>
+            <span class="rail-sign rail-sign-green"><svg class="pic pic-wide"><use href="#pic-car"/></svg></span>
+            <span class="rail-sign rail-sign-brown"><svg class="pic"><use href="#pic-coffee"/></svg></span>
+        </aside>
+
+        {% if error %}<section class="banner error">{{ error }}</section>{% endif %}
+        {% if success %}<section class="banner success">{{ success }}</section>{% endif %}
+
+        <details class="panel guide" id="page-guide" open>
+            <summary>{{ t("How this page works") }}</summary>
+            <ul>
+                {% if is_home %}
+                <li>{{ t("This is tonight's trip at a glance: destination, who is in, drivers, and whether a plan exists.") }}</li>
+                <li>{{ t("The big green button is always the next thing to do.") }}</li>
+                <li>{{ t("Past trips reload with one click; your current trip is saved first.") }}</li>
+                {% elif is_plan %}
+                <li>{{ t("The map is the workspace: search or click to place the destination, people, or meetup spots, using the Map Click Target.") }}</li>
+                <li>{{ t("Tabs on the right: People and Places set the trip up, Rules add constraints, Results runs the optimizer and lists the plans.") }}</li>
+                <li>{{ t("Show on map draws a plan; Food Along Route lists stops along it.") }}</li>
+                {% elif is_share %}
+                <li>{{ t("Create an invite link and send it on WhatsApp; guests reply from their phone without an account.") }}</li>
+                <li>{{ t("Import their replies into the trip from Review submissions.") }}</li>
+                <li>{{ t("Once a plan exists, copy one message per driver and send it.") }}</li>
+                {% elif is_trips %}
+                <li>{{ t("Every saved trip can be reopened or loaded back as the current trip.") }}</li>
+                <li>{{ t("Loading a past trip saves the current one first, so nothing is lost.") }}</li>
+                <li>{{ t("Snapshots open as a standalone page you can print or share.") }}</li>
+                {% elif is_settings %}
+                <li>{{ t("Map & planning holds the defaults most people touch: map centre, meetup pooling, notifications.") }}</li>
+                <li>{{ t("Advanced optimizer picks the route algorithm and its knobs; the defaults are fine.") }}</li>
+                <li>{{ t("Set an organizer password before sharing the admin link.") }}</li>
+                {% endif %}
+            </ul>
+            <p class="muted">{{ t("The blue i in the top bar turns these hints on and off.") }}</p>
+        </details>
+
+        {% if is_home %}
+        <section class="sign sign-hero" id="home-sign">
+            {% if destination %}
+            <div class="sign-body">
+                <h1>{{ destination.name }}</h1>
+                <p>{% if current_dataset %}{{ current_dataset.dataset_name }}{% else %}{{ t("Current trip") }}{% endif %}{% if destination.target_arrival_time %} · {{ t("arrive") }} {{ destination.target_arrival_time }}{% endif %}</p>
+            </div>
+            <span class="sign-arrow" aria-hidden="true">➚</span>
+            {% else %}
+            <div class="sign-body">
+                <h1>{{ t("No destination yet") }}</h1>
+                <p>{{ t("Pick where tonight ends and the plan starts from there.") }}</p>
+            </div>
+            {% endif %}
+        </section>
+        <section class="km-strip" aria-label="{{ t('Trip status') }}">
+            <div class="km-marker"><strong>{{ active_participant_count }}</strong><span>{{ t("in tonight's pool") }}</span></div>
+            <div class="km-marker"><strong>{{ driver_count }}</strong><span>{{ t("drivers") }}</span></div>
+            <div class="km-marker{% if pending_guest_replies %} km-marker-pending{% endif %}"><strong>{{ pending_guest_replies }}</strong><span>{{ t("guest replies to import") }}</span></div>
+            <div class="km-marker">
+                {% if optimization and optimization.best_result %}
+                <strong>{{ optimization.best_result.assignments|length }} {{ t("cars") }}</strong>
+                <span>{{ '%.0f'|format(optimization.best_result.total_distance_km) }} km · EUR {{ '%.0f'|format(optimization.best_result.total_cost_eur) }}</span>
+                {% else %}
+                <strong>–</strong><span>{{ t("plan not run yet") }}</span>
+                {% endif %}
+            </div>
+        </section>
+        <section class="panel home-action">
+            {% if next_action.method == 'post' %}
+            <form method="post" action="{{ next_action.href }}"><button type="submit" class="button-big">{{ t(next_action.label) }}</button></form>
+            {% else %}
+            <a class="button-link button-big" href="{{ next_action.href }}">{{ t(next_action.label) }}</a>
+            {% endif %}
+            {% if not onboarding_complete %}
+            <div class="checklist">
+                <span class="{{ 'done' if onboarding.has_destination else '' }}">{{ t("Set a destination") }}</span>
+                <span class="{{ 'done' if onboarding.has_participants else '' }}">{{ t("Add participants") }}</span>
+                <span class="{{ 'done' if onboarding.has_driver else '' }}">{{ t("Mark at least one driver") }}</span>
+                <span class="{{ 'done' if onboarding.has_history else '' }}">{{ t("Save your first trip") }}</span>
+            </div>
+            {% endif %}
+        </section>
+        {% if trip_history %}
+        <section class="panel">
+            <div class="panel-head"><h2>{{ t("Recent trips") }}</h2><a href="/trips">{{ t("All trips") }}</a></div>
+            <div class="saved-list">
+                {% for entry in trip_history[:3] %}
+                <article class="mini-card">
+                    <strong>{{ entry.trip_name }}</strong>
+                    <span class="muted">{{ entry.trip_date or entry.created_at }}</span>
+                    <div class="inline-actions">
+                        <form method="post" action="/history/{{ entry.id }}/restore"><button class="secondary" type="submit" data-confirm="{{ t('Load this past trip? Your current trip is saved first.') }}">{{ t("Load this trip") }}</button></form>
+                        <a class="button-link secondary-link" href="/history/{{ entry.id }}/snapshot" target="_blank">{{ t("Open snapshot") }}</a>
+                    </div>
+                </article>
+                {% endfor %}
+            </div>
+        </section>
+        {% endif %}
+        <section class="road-strip" aria-hidden="true">
+            <span class="road-sign"><svg class="pic"><use href="#pic-burger"/></svg><svg class="pic"><use href="#pic-pizza"/></svg><svg class="pic"><use href="#pic-kebab"/></svg> {{ t("Next exit: dinner") }}</span>
+            <div class="road-lane">
+                <svg class="pic pic-car"><use href="#pic-car"/></svg>
+                <svg class="pic pic-vespa"><use href="#pic-vespa"/></svg>
+            </div>
+        </section>
+        {% endif %}
+
+        {% if is_plan and optimization and optimization.best_result %}
+        <section class="panel pinned-summary">
+            <strong>{{ t("Recommended plan:") }}</strong>
+            <span>{{ optimization.best_result.driver_set_name }}</span>
+            <span>Fitness {{ '%.3f'|format(optimization.best_result.fitness) }}</span>
+            <span>{{ '%.1f'|format(optimization.best_result.total_distance_km) }} km</span>
+            <span>EUR {{ '%.2f'|format(optimization.best_result.total_cost_eur) }}</span>
+        </section>
+        {% endif %}
+
+        {% if is_plan %}
+        <section class="workspace" id="map-panel">
+            <div class="workspace-map">
+                <div class="map-heading">
+                    <h2 title="{{ t('Search or click on the map, drag the selection marker to refine points, and preview the recommended routes with colored overlays.') }}">{{ t("Interactive Map") }}</h2>
+                </div>
+                <div class="map-toolbar">
+                    <div class="search-box">
+                        <label><span>{{ t("Search Address") }}</span><input id="map-search" type="text" placeholder="{{ t('Search for an address or place') }}"></label>
+                        <div id="search-results" class="search-results"></div>
+                    </div>
+                    <label><span>{{ t("Map Click Target") }}</span><select id="map-target"><option value="destination">{{ t("Destination") }}</option><option value="participant">{{ t("Participant form") }}</option><option value="meetup">{{ t("Meetup spot") }}</option></select></label>
+                    <label><span>{{ t("Fit View") }}</span><select id="fit-mode"><option value="all">{{ t("All markers") }}</option><option value="destination">{{ t("Destination only") }}</option><option value="route">{{ t("Best route") }}</option></select></label>
+                    <label><span>{{ t("Route Option") }}</span><select id="route-set-select"><option value="best">{{ t("Best plan") }}</option></select></label>
+                    <label><span class="eyebrow service-eyebrow">Area di servizio</span><span>{{ t("Food Along Route") }}</span><select id="food-mode"><option value="off">{{ t("Off") }}</option><option value="kebab">Kebab</option><option value="kfc">KFC</option><option value="mcdonalds">McDonald's</option><option value="burger_king">Burger King</option><option value="pizza">Pizza</option><option value="cafe">{{ t("Coffee") }}</option><option value="all">{{ t("All food stops") }}</option></select></label>
+                    <button id="refresh-map" type="button">{{ t("Refresh routes") }}</button>
+                    <span id="food-overlay-status" class="muted food-overlay-status badge-service" aria-live="polite"></span>
+                </div>
+                <div id="planner-map" class="planner-map"></div>
+                <div class="legend">
+                    <span><i class="legend-dot driver-dot"></i> {{ t("Driver") }}</span>
+                    <span><i class="legend-dot passenger-dot"></i> {{ t("Passenger") }}</span>
+                    <span><i class="legend-dot destination-dot"></i> {{ t("Active destination in use") }}</span>
+                    <span><i class="legend-dot meetup-dot"></i> {{ t("Meetup spot") }}</span>
+                    <span><i class="legend-dot selection-dot"></i> {{ t("Temporary editable selection") }}</span>
+                </div>
+                <div id="map-summary" class="map-summary muted">{{ t("Run optimization to view routes on the map.") }}</div>
+                <div id="route-toggles" class="route-toggles"></div>
+            </div>
+            <div class="workspace-side">
+                <div class="ws-tabs" role="tablist" aria-label="{{ t('Workspace sections') }}">
+                    {% for tab in workspace_tabs %}
+                    <button type="button" role="tab" id="tab-{{ tab.slug }}" data-tab="{{ tab.slug }}" aria-controls="panel-{{ tab.slug }}" aria-selected="{{ 'true' if tab.slug == active_tab else 'false' }}">{{ t(tab.label) }}</button>
+                    {% endfor %}
+                </div>
+
+                <div class="ws-panel" id="panel-people" role="tabpanel"{% if active_tab != 'people' %} hidden{% endif %} aria-labelledby="tab-people">
+                    {% if current_dataset and current_dataset.dataset_type == 'invite' %}
+                    <section class="panel dataset-callout">
+                        <strong>{{ t("Guest session workspace") }}</strong>
+                        <span class="muted">{{ current_dataset.dataset_name }}</span>
+                        {% if planner_dataset_status %}
+                        <span class="muted">{{ planner_dataset_status.detail }}</span>
+                        {% endif %}
+                    </section>
+                    {% endif %}
+                    <details class="panel collapsible allow-floating-ui" open>
+                        <summary>{{ t("Participants") }}</summary>
+                        <div class="panel-body">
+                            <div class="grid top-grid">
+                                <section>
+                                    <h3>{{ t("Edit Participant") if editing_participant else t("Quick Add Participant") }}</h3>
+                                    <form method="post" action="/participants" class="form-grid participants-form" id="participants-form">
+                                        <input type="hidden" name="participant_id" value="{{ editing_participant.id if editing_participant else '' }}">
+                                        <label><span>{{ t("Name") }}</span><input id="participant-name" name="name" required value="{{ editing_participant.name if editing_participant else '' }}"></label>
+                                        <label class="autocomplete-field"><span>{{ t("Address") }}</span><input id="participant-address" name="address_text" value="{{ editing_participant.address_text if editing_participant else '' }}" autocomplete="off"><div id="participant-address-results" class="search-results form-search-results"></div></label>
+                                        <label class="checkbox"><input name="has_car" type="checkbox" value="true" {% if editing_participant and editing_participant.has_car %}checked{% endif %}><span>{{ t("Can drive") }}</span></label>
+                                        <label><span>{{ t("Vehicle") }}</span><select name="vehicle_type">{% for value, label in vehicle_types.items() %}<option value="{{ value }}" {% if editing_participant and editing_participant.vehicle_type == value %}selected{% endif %}>{{ t(label) }}</option>{% endfor %}</select></label>
+                                        <label><span>{{ t("Total Seats") }}</span><input name="total_seats" type="number" min="1" value="{{ editing_participant.total_seats if editing_participant else '' }}"></label>
+                                        {% if field_errors.name %}<p class="field-error">{{ field_errors.name }}</p>{% endif %}
+                                        {% if field_errors.location %}<p class="field-error">{{ field_errors.location }}</p>{% endif %}
+                                        {% if field_errors.total_seats %}<p class="field-error">{{ field_errors.total_seats }}</p>{% endif %}
+                                        <details class="advanced-fields" {% if editing_participant %}open{% endif %}>
+                                            <summary>{{ t("Advanced participant details") }}</summary>
+                                            <div class="advanced-grid">
+                                                <label><span>{{ t("Latitude") }}</span><input id="participant-latitude" name="latitude" type="number" step="any" value="{{ editing_participant.latitude if editing_participant else '' }}"></label>
+                                                <label><span>{{ t("Longitude") }}</span><input id="participant-longitude" name="longitude" type="number" step="any" value="{{ editing_participant.longitude if editing_participant else '' }}"></label>
+                                                <label><span>{{ t("Location Name") }}</span><input id="participant-location-name" name="location_name" value="{{ editing_participant.location_name if editing_participant else '' }}"></label>
+                                                <label><span>{{ t("Pickup Plan") }}</span><select name="pickup_mode"><option value="home" {% if not editing_participant or editing_participant.pickup_mode != 'meetup' %}selected{% endif %}>{{ t("Use home location") }}</option><option value="meetup" {% if editing_participant and editing_participant.pickup_mode == 'meetup' %}selected{% endif %}>{{ t("Use meetup spot") }}</option></select></label>
+                                                <label><span>{{ t("Saved Meetup Spot") }}</span><select name="meetup_spot_id"><option value="">{{ t("Select saved spot") }}</option>{% for spot in saved_meetup_spots %}<option value="{{ spot.id }}">{{ spot.name }}{% if spot.has_ev_charging %} · EV{% endif %}</option>{% endfor %}</select></label>
+                                                <label><span>{{ t("Pickup Spot Name") }}</span><input name="pickup_location_name" value="{{ editing_participant.pickup_location_name if editing_participant else '' }}" placeholder="{{ t('Park & Ride Nord') }}"></label>
+                                                <label class="autocomplete-field"><span>{{ t("Pickup Address") }}</span><input name="pickup_address_text" value="{{ editing_participant.pickup_address_text if editing_participant else '' }}" autocomplete="off" placeholder="{{ t('Free parking or charging hub') }}"></label>
+                                                <label><span>{{ t("Pickup Latitude") }}</span><input name="pickup_latitude" type="number" step="any" value="{{ editing_participant.pickup_latitude if editing_participant else '' }}"></label>
+                                                <label><span>{{ t("Pickup Longitude") }}</span><input name="pickup_longitude" type="number" step="any" value="{{ editing_participant.pickup_longitude if editing_participant else '' }}"></label>
+                                                <label><span>{{ t("Habit Score") }}</span><input name="habit_score" type="number" step="any" value="{{ editing_participant.habit_score if editing_participant else '0' }}"></label>
+                                                <label><span>{{ t("Driver Tag") }}</span><select name="role_tag"><option value="standard" {% if not editing_participant or editing_participant.role_tag == 'standard' %}selected{% endif %}>{{ t("Standard") }}</option><option value="always_driver" {% if editing_participant and editing_participant.role_tag == 'always_driver' %}selected{% endif %}>{{ t("Always driver") }}</option><option value="prefers_passenger" {% if editing_participant and editing_participant.role_tag == 'prefers_passenger' %}selected{% endif %}>{{ t("Prefers passenger") }}</option></select></label>
+                                                <label><span>{{ t("Availability") }}</span><select name="availability_tag"><option value="available" {% if not editing_participant or editing_participant.availability_tag == 'available' %}selected{% endif %}>{{ t("Available") }}</option><option value="sometimes_unavailable" {% if editing_participant and editing_participant.availability_tag == 'sometimes_unavailable' %}selected{% endif %}>{{ t("Sometimes unavailable") }}</option><option value="rarely_available" {% if editing_participant and editing_participant.availability_tag == 'rarely_available' %}selected{% endif %}>{{ t("Rarely available") }}</option></select></label>
+                                                <label class="checkbox"><input name="pickup_flexible" type="checkbox" value="true" {% if not editing_participant or editing_participant.pickup_flexible %}checked{% endif %}><span>{{ t("Pickup flexible") }}</span></label>
+                                                <label class="checkbox"><input name="force_drive_alone" type="checkbox" value="true" {% if editing_participant and editing_participant.force_drive_alone %}checked{% endif %}><span>{{ t("Drive alone and stay visible in the plan") }}</span></label>
+                                                <label class="checkbox"><input name="clear_time_preferences" type="checkbox" value="true"><span>{{ t("Clear all time preferences and make fully flexible") }}</span></label>
+                                                <label><span>{{ t("List Order") }}</span><input name="priority_rank" type="number" min="1" value="{{ editing_participant.priority_rank if editing_participant else (participants|length + 1) }}"></label>
+                                                <label><span>{{ t("Fuel Type") }}</span><select name="fuel_type">{% for fuel_type in fuel_types %}<option value="{{ fuel_type }}" {% if editing_participant and editing_participant.fuel_type == fuel_type %}selected{% endif %}>{{ fuel_type }}</option>{% endfor %}</select></label>
+                                                <label><span>{{ t("Consumption (L/100km)") }}</span><input name="consumption_l_per_100km" type="number" step="any" value="{{ editing_participant.consumption_l_per_100km if editing_participant else '' }}" placeholder="{{ t('Auto-filled from fuel type') }}"></label>
+                                                <label><span>{{ t("Outbound earliest") }}</span><input name="outbound_earliest_time" type="time" value="{{ editing_participant.outbound_earliest_time if editing_participant else '' }}"></label>
+                                                <label><span>{{ t("Outbound latest") }}</span><input name="outbound_latest_time" type="time" value="{{ editing_participant.outbound_latest_time if editing_participant else '' }}"></label>
+                                                <label><span>{{ t("Return earliest") }}</span><input name="return_earliest_time" type="time" value="{{ editing_participant.return_earliest_time if editing_participant else '' }}"></label>
+                                                <label><span>{{ t("Return latest") }}</span><input name="return_latest_time" type="time" value="{{ editing_participant.return_latest_time if editing_participant else '' }}"></label>
+                                            </div>
+                                        </details>
+                                        {% if field_errors.outbound_time %}<p class="field-error">{{ field_errors.outbound_time }}</p>{% endif %}
+                                        {% if field_errors.return_time %}<p class="field-error">{{ field_errors.return_time }}</p>{% endif %}
+                                        <div class="inline-actions">
+                                            <button type="submit">{{ t("Update participant") if editing_participant else t("Add participant") }}</button>
+                                            {% if editing_participant %}<a class="button-link secondary-link" href="{{ current_page.path }}">{{ t("Cancel edit") }}</a>{% endif %}
+                                        </div>
+                                    </form>
+                                </section>
+                                <section>
+                                    <h3>{{ t("Current Trip & CSV") }}</h3>
+                                    <div class="dataset-tools-grid">
+                                        <div class="dataset-tools-column">
+                                            <article class="mini-card compact-tool-card">
+                                                <strong>{{ t("Current trip") }}</strong>
+                                                {% if current_dataset %}
+                                                {% if current_dataset.dataset_type == 'invite' %}
+                                                <span class="muted">{{ t("Guest session workspace") }}</span>
+                                                {% endif %}
+                                                <span class="muted">
+                                                    {{ current_dataset.dataset_name }}
+                                                    ·
+                                                    {% if current_dataset.dataset_type == 'invite' %}{{ t("guest session") }}{% else %}{{ t("snapshot") }}{% endif %}
+                                                    {% if current_dataset.customized %}· {{ t("customized locally") }}{% endif %}
+                                                </span>
+                                                {% else %}
+                                                <span class="muted">{{ t("Not linked to a saved crew or guest session.") }}</span>
+                                                {% endif %}
+                                            </article>
+
+                                            <article class="mini-card compact-tool-card">
+                                                <strong>{{ t("Guest Sessions") }}</strong>
+                                                    <div class="saved-list compact-saved-list">
+                                                    {% for invite in trip_invites %}
+                                                    <article class="mini-card compact-list-card">
+                                                        <strong>{{ invite.trip_name }}</strong>
+                                                        <span class="muted">{{ invite.response_count }} {{ t("responses") }}{% if invite.imported_count %} · {{ invite.imported_count }} {{ t("imported") }}{% endif %}</span>
+                                                        <span class="muted">{{ invite.destination_name }}{% if invite.target_arrival_time %} · {{ t("arrival") }} {{ invite.target_arrival_time }}{% endif %}</span>
+                                                        {% if invite.is_active_dataset %}
+                                                        <span class="muted">
+                                                            {{ t("Current trip") }}
+                                                            {% if invite.has_new_responses %} - {{ t("New guest updates available") }}{% else %} - {{ t("Synced with latest guest responses") }}{% endif %}
+                                                        </span>
+                                                        {% endif %}
+                                                        <div class="inline-actions">
+                                                            <form method="post" action="/invites/{{ invite.id }}/use-as-workspace">
+                                                                <button type="submit" data-confirm="{{ t('Replace the current trip with this guest session? Your current trip is saved first.') }}">
+                                                                    {{ t('Refresh from guests') if invite.is_active_dataset else t('Use as current trip') }}
+                                                                </button>
+                                                            </form>
+                                                            <a class="button-link secondary-link" href="/invites/{{ invite.id }}">{{ t("Review") }}</a>
+                                                        </div>
+                                                    </article>
+                                                    {% else %}
+                                                    <p class="muted">{{ t("No guest sessions yet. Create an invite below to collect participant data directly.") }}</p>
+                                                    {% endfor %}
+                                                </div>
+                                            </article>
+                                        </div>
+
+                                        <div class="dataset-tools-column">
+                                            <details class="mini-card compact-tool-card snapshot-subsection"{% if saved_groups %} open{% endif %}>
+                                                <summary>
+                                                    <span>{{ t("Saved Crews") }}</span>
+                                                    <span class="muted">{{ saved_groups|length }}</span>
+                                                </summary>
+                                                <div class="snapshot-subsection-body">
+                                                    <form method="post" action="/groups" class="stack-form compact-stack-form">
+                                                        <label><span>{{ t("Save these people as a crew") }}</span><input name="group_name" placeholder="{{ t('Weekend crew') }}"></label>
+                                                        <button type="submit">{{ t("Save crew") }}</button>
+                                                    </form>
+                                                    <div class="saved-list compact-saved-list">
+                                                        {% for group in saved_groups %}
+                                                        <article class="mini-card compact-list-card">
+                                                            <strong>{{ group.name }}</strong>
+                                                            <div class="inline-actions">
+                                                                <form method="post" action="/groups/{{ group.id }}/apply"><button type="submit">{{ t("Load crew") }}</button></form>
+                                                                <form method="post" action="/groups/{{ group.id }}/delete"><button class="danger" type="submit" data-confirm="{{ t('Delete this crew?') }}">{{ t("Delete") }}</button></form>
+                                                            </div>
+                                                        </article>
+                                                        {% else %}
+                                                        <p class="muted">{{ t("No saved crews yet.") }}</p>
+                                                        {% endfor %}
+                                                    </div>
+                                                </div>
+                                            </details>
+
+                                            <article class="mini-card compact-tool-card">
+                                                <strong>{{ t("CSV Tools") }}</strong>
+                                                <div class="inline-actions"><a class="button-link" href="/participants/export">{{ t("Export CSV") }}</a></div>
+                                                <form method="post" action="/participants/import" enctype="multipart/form-data" class="stack-form compact-stack-form">
+                                                    <label><span>{{ t("Import participants CSV") }}</span><input type="file" name="csv_file" accept=".csv" required></label>
+                                                    <label class="checkbox"><input type="checkbox" name="replace_existing" value="true"><span>{{ t("Replace current participants") }}</span></label>
+                                                    <button type="submit">{{ t("Import CSV") }}</button>
+                                                </form>
+                                            </article>
+                                        </div>
+                                    </div>
+                                    {% if field_errors.csv_file %}<p class="field-error pre-wrap">{{ field_errors.csv_file }}</p>{% endif %}
+                                </section>
+                            </div>
+                            <section id="participants-panel">
+                                <h3>{{ t("Current Participants") }}</h3>
+                                <p class="hint" title="{{ t('Habit score affects driver selection. List order is display only. Drag rows by the handle to reorder.') }}">{{ t("Toggle who is in tonight's trip without deleting anyone.") }}</p>
+                                {% if participants %}
+                                <div class="participant-table-wrap">
+                                <table class="participant-table">
+                                    <thead><tr><th></th><th>{{ t("Name") }}</th><th>{{ t("This Trip") }}</th><th>{{ t("Location") }}</th><th>{{ t("Coordinates") }}</th><th>{{ t("Role") }}</th><th>{{ t("Vehicle") }}</th><th>{{ t("Time Preferences") }}</th><th>{{ t("Habit") }}</th><th></th><th>{{ t("Order") }}</th></tr></thead>
+                                    <tbody id="participant-table-body">
+                                        {% for participant in participants %}
+                                        <tr data-participant-row="{{ participant.id }}" class="{{ 'inactive-row' if not participant.active_in_trip else '' }}" draggable="true">
+                                            <td class="reorder-cell" data-label="{{ t('Reorder') }}"><button type="button" class="drag-handle" aria-label="{{ t('Drag to reorder') }}" title="{{ t('Drag to reorder') }}">::</button></td>
+                                            <td data-label="{{ t('Name') }}">{{ participant.name }}</td>
+                                            <td data-label="{{ t('This Trip') }}">
+                                                <form method="post" action="/participants/{{ participant.id }}/trip-toggle">
+                                                    <input type="hidden" name="active_in_trip" value="{{ 'false' if participant.active_in_trip else 'true' }}">
+                                                    <button class="{{ 'secondary' if participant.active_in_trip else '' }}" type="submit">{{ t('Included') if participant.active_in_trip else t('Parked') }}</button>
+                                                </form>
+                                            </td>
+                                            <td data-label="{{ t('Location') }}">
+                                                {{ participant.location_name }}
+                                                {% if participant.address_text %}<div class="muted">{{ participant.address_text }}</div>{% endif %}
+                                                {% if participant.pickup_mode == 'meetup' and participant.pickup_location_name %}
+                                                <div class="muted">{{ t("Pickup via") }} {{ participant.pickup_location_name }}</div>
+                                                {% if participant.pickup_address_text %}<div class="muted">{{ participant.pickup_address_text }}</div>{% endif %}
+                                                {% endif %}
+                                            </td>
+                                            <td data-label="{{ t('Coordinates') }}">{{ '%.4f'|format(participant.latitude) }}, {{ '%.4f'|format(participant.longitude) }}</td>
+                                            <td data-label="{{ t('Role') }}"><span class="targa{% if participant.has_car %} targa-driver{% endif %}"><span>{{ t('Driver') if participant.has_car else t('Passenger') }}</span></span></td>
+                                            <td data-label="{{ t('Vehicle') }}">{% if participant.has_car %}{{ t(vehicle_types[participant.vehicle_type]) }} · {{ participant.fuel_type }} / {{ participant.total_seats }} {{ t('seats') }}{% else %}-{% endif %}<div class="muted">{{ participant.role_tag }}, {{ participant.availability_tag }}, {% if participant.pickup_flexible %}{{ t('flexible pickup') }}{% else %}{{ t('fixed pickup') }}{% endif %}{% if participant.pickup_mode == 'meetup' %}, {{ t('meetup preset') }}{% endif %}{% if participant.force_drive_alone %}, {{ t('solo driver') }}{% endif %}</div></td>
+                                            <td data-label="{{ t('Time Preferences') }}"><div class="muted">{{ participant.time_preferences_summary }}</div></td>
+                                            <td data-label="{{ t('Habit') }}">{{ '%+.1f'|format(participant.habit_score) }}</td>
+                                            <td data-label="{{ t('Actions') }}">
+                                                <div class="inline-actions">
+                                                    <a class="button-link" href="/participants/{{ participant.id }}/edit">{{ t("Edit") }}</a>
+                                                    <form method="post" action="/participants/{{ participant.id }}/delete"><button class="danger" type="submit" data-confirm="{{ t('Delete participant {name}?', name=participant.name) }}">{{ t("Delete") }}</button></form>
+                                                </div>
+                                            </td>
+                                            <td class="order-cell" data-label="{{ t('Order') }}"><span class="order-badge">{{ loop.index }}</span></td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                                </div>
+                                {% else %}
+                                <p class="muted">{{ t("No participants yet. Add your friends or load the sample dataset.") }}</p>
+                                {% endif %}
+                            </section>
+                        </div>
+                    </details>
+                </div>
+
+                <div class="ws-panel" id="panel-places" role="tabpanel"{% if active_tab != 'places' %} hidden{% endif %} aria-labelledby="tab-places">
+                    <details class="panel collapsible allow-floating-ui" open id="destination-panel">
+                        <summary>{{ t("Destination & Favorites") }}</summary>
+                        <div class="panel-body">
+                            <div class="grid">
+                                <div>
+                                    {% if destination %}
+                                    <article class="mini-card">
+                                        <strong title="{{ t('To update the destination from the map, set the click target to Destination, click once, then save here.') }}">{{ t("Current destination") }}</strong>
+                                        <span>{{ destination.name }}</span>
+                                        <span class="muted">{{ destination.address_text or (destination.latitude ~ ', ' ~ destination.longitude) }}</span>
+                                    </article>
+                                    {% endif %}
+                                    <form method="post" action="/destination" class="form-grid" id="destination-form">
+                                        <label><span>{{ t("Name") }}</span><input id="destination-name" name="name" value="{{ destination.name if destination else '' }}"></label>
+                                        <label class="autocomplete-field"><span>{{ t("Address") }}</span><input id="destination-address" name="address_text" value="{{ destination.address_text if destination and destination.address_text else '' }}" autocomplete="off"><div id="destination-address-results" class="search-results form-search-results"></div></label>
+                                        <label><span>{{ t("Target arrival") }}</span><input name="target_arrival_time" type="time" value="{{ destination.target_arrival_time if destination and destination.target_arrival_time else '' }}"><small class="muted">{{ t("Optional soft goal for fully flexible participants.") }}</small></label>
+                                        <details class="advanced-fields">
+                                            <summary>{{ t("Exact coordinates (advanced)") }}</summary>
+                                            <div class="advanced-grid">
+                                                <label><span>{{ t("Latitude") }}</span><input id="destination-latitude" name="latitude" type="number" step="any" value="{{ destination.latitude if destination else '' }}"></label>
+                                                <label><span>{{ t("Longitude") }}</span><input id="destination-longitude" name="longitude" type="number" step="any" value="{{ destination.longitude if destination else '' }}"></label>
+                                            </div>
+                                            <p class="hint" title="{{ t('Filled automatically from the address search or a map click.') }}">{{ t("Optional") }}</p>
+                                        </details>
+                                        <div class="inline-actions">
+                                            <button type="submit">{{ t("Save destination") }}</button>
+                                            <button type="submit" formaction="/destination/favorite">{{ t("Save as favorite") }}</button>
+                                        </div>
+                                    </form>
+                                    {% if field_errors.destination %}<p class="field-error">{{ field_errors.destination }}</p>{% endif %}
+                                    <div class="inline-actions">
+                                        <form method="post" action="/sample"><button type="submit">{{ t("Load sample data") }}</button></form>
+                                        <form method="post" action="/reset"><button class="secondary" type="submit" data-confirm="{{ t('Reset the current trip? Saved crews, favorites and past trips stay.') }}">{{ t("Reset current trip") }}</button></form>
+                                        <a class="button-link secondary-link" href="/workspace/export">{{ t("Export backup") }}</a>
+                                    </div>
+                                    <form method="post" action="/workspace/import" enctype="multipart/form-data" class="stack-form compact-stack-form">
+                                        <label><span>{{ t("Restore a backup file") }}</span><input type="file" name="backup_file" accept=".json" required></label>
+                                        <button class="secondary" type="submit" data-confirm="{{ t('Replace the current trip with this backup? Your current trip is backed up automatically first.') }}">{{ t("Import backup") }}</button>
+                                    </form>
+                                </div>
+                                <div>
+                                    <h3>{{ t("Saved Destinations") }}</h3>
+                                    <label><span>{{ t("Filter favorites") }}</span><input id="favorite-filter" type="text" placeholder="{{ t('Search destinations') }}"></label>
+                                    {% for favorite in saved_destinations %}
+                                    <article class="mini-card favorite-card" data-filter-text="{{ (favorite.name ~ ' ' ~ (favorite.address_text or ''))|lower }}">
+                                        <strong>{{ favorite.name }}</strong>
+                                        <span class="muted">{{ favorite.address_text or (favorite.latitude ~ ', ' ~ favorite.longitude) }}</span>
+                                        {% if favorite.target_arrival_time %}
+                                        <span class="muted">{{ t("Target arrival") }}: {{ favorite.target_arrival_time }}</span>
+                                        {% endif %}
+                                        <div class="inline-actions">
+                                            <form method="post" action="/destination/favorite/{{ favorite.id }}/apply"><button type="submit">{{ t("Use") }}</button></form>
+                                            <form method="post" action="/destination/favorite/{{ favorite.id }}/delete"><button class="danger" type="submit" data-confirm="{{ t('Delete this saved destination?') }}">{{ t("Delete") }}</button></form>
+                                        </div>
+                                    </article>
+                                    {% else %}
+                                    <p class="muted">{{ t("No saved destinations yet.") }}</p>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </details>
+                    <section class="panel" id="meetup-spots-panel">
+                        <article class="mini-card compact-tool-card">
+                            <div class="compact-tool-card-header">
+                                <strong>{{ t("Saved Meetup Spots") }}</strong>
+                                <span class="muted">{{ saved_meetup_spots|length }}</span>
+                            </div>
+                                <form method="post" action="/meetup-spots" class="stack-form compact-stack-form" id="meetup-spot-form">
+                                    <label><span>{{ t("Name") }}</span><input id="meetup-spot-name" name="name" placeholder="{{ t('Park & Ride Nord') }}"></label>
+                                    <label class="autocomplete-field"><span>{{ t("Address") }}</span><input id="meetup-spot-address" name="address_text" placeholder="{{ t('Parking area or charging hub') }}" autocomplete="off"><div id="meetup-spot-address-results" class="search-results form-search-results"></div></label>
+                                    <label><span>{{ t("Latitude") }}</span><input id="meetup-spot-latitude" name="latitude" type="number" step="any"></label>
+                                    <label><span>{{ t("Longitude") }}</span><input id="meetup-spot-longitude" name="longitude" type="number" step="any"></label>
+                                    <label class="checkbox"><input type="checkbox" name="is_free_parking" value="true" checked><span>{{ t("Free parking") }}</span></label>
+                                    <label class="checkbox"><input type="checkbox" name="has_ev_charging" value="true"><span>{{ t("EV charging available") }}</span></label>
+                                    <label><span>{{ t("Notes") }}</span><input name="notes" placeholder="{{ t('Open 24/7, good rendezvous point') }}"></label>
+                                    <button type="submit">{{ t("Save meetup spot") }}</button>
+                                </form>
+                                {% if field_errors.meetup_spot %}<p class="field-error">{{ field_errors.meetup_spot }}</p>{% endif %}
+                                <details class="tool-subsection meetup-saved-list-toggle"{% if saved_meetup_spots %} open{% endif %}>
+                                    <summary>
+                                        <span>{{ t("Saved spots") }}</span>
+                                        <span class="muted">{{ saved_meetup_spots|length }}</span>
+                                    </summary>
+                                    <div class="tool-subsection-body">
+                                        <div class="saved-list compact-saved-list">
+                                    {% for spot in saved_meetup_spots %}
+                                    <article class="mini-card compact-list-card">
+                                        <strong>{{ spot.name }}</strong>
+                                        <span class="muted">{{ spot.address_text or (spot.latitude ~ ', ' ~ spot.longitude) }}</span>
+                                        <span class="muted">{% if spot.is_free_parking %}{{ t("Free parking") }}{% else %}{{ t("Paid/unspecified parking") }}{% endif %}{% if spot.has_ev_charging %} · {{ t("EV charging") }}{% endif %}</span>
+                                        {% if spot.notes %}<span class="muted">{{ spot.notes }}</span>{% endif %}
+                                        <div class="inline-actions">
+                                            <form method="post" action="/meetup-spots/{{ spot.id }}/delete"><button class="danger" type="submit" data-confirm="{{ t('Delete this meetup spot?') }}">{{ t("Delete") }}</button></form>
+                                        </div>
+                                    </article>
+                                    {% else %}
+                                    <p class="muted">{{ t("No meetup spots yet. Add parking, park-and-ride or EV charging points.") }}</p>
+                                    {% endfor %}
+                                        </div>
+                                    </div>
+                                </details>
+                        </article>
+                    </section>
+                </div>
+
+                <div class="ws-panel" id="panel-rules" role="tabpanel"{% if active_tab != 'rules' %} hidden{% endif %} aria-labelledby="tab-rules">
+                    <section class="panel">
+                        <article class="mini-card" id="planner-return-planning">
+                            <strong>{{ t("Return Trip Planning") }}</strong>
+                            <span class="hint" title="{{ t('Plans the way back separately from the outbound trip, for when the group or the time windows change later in the night.') }}">{{ t("Plan the way back separately") }}</span>
+                            <form method="post" action="/settings/return-planning" class="stack-form">
+                                <label class="checkbox compact-checkbox"><input name="plan_return_separately" type="checkbox" value="true" {% if settings.optimization.plan_return_separately %}checked{% endif %}><span>{{ t("Plan return trip separately after outbound optimization") }}</span></label>
+                                <button type="submit">{{ t("Save planning option") }}</button>
+                            </form>
+                        </article>
+                        <article class="mini-card" id="planner-pickup-rules">
+                            <strong>{{ t("Pickup Order Rules") }}</strong>
+                            <span class="hint" title="{{ t('Outbound-only soft rule: it nudges the pickup order when both riders share a car, without forcing an impossible route.') }}">{{ t("Soft rule, same car only") }}</span>
+                            <form method="post" action="/pickup-rules" class="pickup-rule-form">
+                                <label><span>{{ t("Pick up") }}</span><select name="before_participant_id" required>{% for participant in active_participants %}<option value="{{ participant.id }}">{{ participant.name }}</option>{% endfor %}</select></label>
+                                <label><span>{{ t("Before") }}</span><select name="after_participant_id" required>{% for participant in active_participants %}<option value="{{ participant.id }}" {% if loop.index == 2 %}selected{% endif %}>{{ participant.name }}</option>{% endfor %}</select></label>
+                                <button type="submit" {% if active_participants|length < 2 %}disabled{% endif %}>{{ t("Add rule") }}</button>
+                            </form>
+                            {% if pickup_order_rules %}
+                            <div class="saved-list pickup-rule-list">
+                                {% for rule in pickup_order_rules %}
+                                <article class="mini-card pickup-rule-card">
+                                    <div>
+                                        <strong>{{ rule.before_name }}</strong>
+                                        <span class="muted">{{ t("should be picked up before {name} if they ride together.", name=rule.after_name) }}</span>
+                                    </div>
+                                    <form method="post" action="/pickup-rules/{{ rule.index }}/delete">
+                                        <button class="danger" type="submit" data-confirm="{{ t('Delete this pickup-order rule?') }}">{{ t("Delete") }}</button>
+                                    </form>
+                                </article>
+                                {% endfor %}
+                            </div>
+                            {% else %}
+                            <p class="muted">{{ t("No rules yet.") }}</p>
+                            {% endif %}
+                        </article>
+                        <article class="mini-card" id="planner-ride-together-rules">
+                            <strong>{{ t("Ride Together Rules") }}</strong>
+                            <span class="hint" title="{{ t('Hard planning constraint: the optimizer will not split this pair, so only use it for real requirements.') }}">{{ t("Hard rule, keeps a pair together") }}</span>
+                            <form method="post" action="/ride-together-rules" class="pickup-rule-form">
+                                <label><span>{{ t("Keep") }}</span><select name="first_participant_id" required>{% for participant in active_participants %}<option value="{{ participant.id }}">{{ participant.name }}</option>{% endfor %}</select></label>
+                                <label><span>{{ t("With") }}</span><select name="second_participant_id" required>{% for participant in active_participants %}<option value="{{ participant.id }}" {% if loop.index == 2 %}selected{% endif %}>{{ participant.name }}</option>{% endfor %}</select></label>
+                                <button type="submit" {% if active_participants|length < 2 %}disabled{% endif %}>{{ t("Add rule") }}</button>
+                            </form>
+                            {% if ride_together_rules %}
+                            <div class="saved-list pickup-rule-list">
+                                {% for rule in ride_together_rules %}
+                                <article class="mini-card pickup-rule-card">
+                                    <div>
+                                        <strong>{{ rule.first_name }}</strong>
+                                        <span class="muted">{{ t("must ride with {name}.", name=rule.second_name) }}</span>
+                                    </div>
+                                    <form method="post" action="/ride-together-rules/{{ rule.index }}/delete">
+                                        <button class="danger" type="submit" data-confirm="{{ t('Delete this ride-together rule?') }}">{{ t("Delete") }}</button>
+                                    </form>
+                                </article>
+                                {% endfor %}
+                            </div>
+                            {% else %}
+                            <p class="muted">{{ t("No rules yet.") }}</p>
+                            {% endif %}
+                        </article>
+                    </section>
+                    <section class="panel">
+                        {% if workspace_backup %}
+                        <article class="mini-card">
+                            <strong>{{ t("Undo available") }}</strong>
+                            <span class="muted">{{ t("From the last trip replacement") }}{% if workspace_backup.reason %} ({{ workspace_backup.reason }}){% endif %}.</span>
+                            <div class="inline-actions">
+                                <form method="post" action="/workspace/restore-backup"><button type="submit" data-confirm="{{ t('Undo the last replace and bring back the previous trip?') }}">{{ t("Undo last replace") }}</button></form>
+                            </div>
+                        </article>
+                        {% endif %}
+                        <form method="post" action="/history/save" class="stack-form">
+                            <label><span>{{ t("Preset") }}</span><select name="preset_name" id="preset-name"><option value="">{{ t("Custom") }}</option>{% for preset in trip_presets %}<option value="{{ preset.name }}">{{ preset.name }}</option>{% endfor %}</select></label>
+                            <label><span>{{ t("Trip Name") }}</span><input name="trip_name" placeholder="{{ t('Friday dinner') }}"></label>
+                            <label><span>{{ t("Date") }}</span><input name="trip_date" type="date"></label>
+                            <label><span>{{ t("Notes") }}</span><textarea name="notes" rows="3" placeholder="{{ t('Optional notes') }}"></textarea></label>
+                            <button type="submit">{{ t("Save this trip") }}</button>
+                        </form>
+                        <div id="preset-notes" class="muted"></div>
+                    </section>
+                </div>
+
+                <div class="ws-panel" id="panel-results" role="tabpanel"{% if active_tab != 'results' %} hidden{% endif %} aria-labelledby="tab-results">
+                    <div class="inline-actions">
+                        <form method="post" action="/selection"><button type="submit" class="secondary">{{ t("Run driver selection") }}</button></form>
+                        <form method="post" action="/optimization"><button type="submit">{{ t("Run full optimization") }}</button></form>
+                        <form method="post" action="/history/duplicate"><button class="secondary" type="submit" data-confirm="{{ t('Load the latest past trip? Your current trip is saved first.') }}">{{ t("Load latest past trip") }}</button></form>
+                    </div>
+                    {% if planner_dataset_status %}
+                    <div class="badge-row">
+                        <span class="badge{% if planner_dataset_status.is_warning %} badge-warning{% endif %}">{{ planner_dataset_status.label }}</span>
+                        <span class="badge{% if planner_dataset_status.is_warning %} badge-warning{% endif %}">{{ planner_dataset_status.detail }}</span>
+                    </div>
+                    {% endif %}
+                    {% if selection %}
+                    <section class="panel" id="driver-selection-section">
+                        <h3>{{ t("Driver Selection") }}<span class="ant-trail" aria-hidden="true"><svg class="pic"><use href="#pic-ant"/></svg><svg class="pic"><use href="#pic-ant"/></svg><svg class="pic"><use href="#pic-ant"/></svg></span></h3>
+                        <div class="results-grid">
+                            <div>
+                                <h3>{{ t("Scores") }}</h3>
+                                <div class="table-scroll">
+                                <table>
+                                    <thead><tr><th>{{ t("Name") }}</th><th>SDP</th><th>SEI</th><th>SDD</th><th>SAS</th><th>SH</th><th>{{ t("Total") }}</th></tr></thead>
+                                    <tbody>
+                                        {% for score in selection.scores %}
+                                        <tr>
+                                            <td>{{ score.name }}</td>
+                                            <td>{{ '%.3f'|format(score.score_distance_passengers) }}</td>
+                                            <td>{{ '%.3f'|format(score.score_environmental) }}</td>
+                                            <td>{{ '%.3f'|format(score.score_distance_destination) }}</td>
+                                            <td>{{ '%.3f'|format(score.score_available_seats) }}</td>
+                                            <td>{{ '%+.3f'|format(score.score_habit) }}</td>
+                                            <td>{{ '%.3f'|format(score.total_score) }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                                </div>
+                            </div>
+                            <div>
+                                <h3>{{ t("Candidate Driver Sets") }}</h3>
+                                {% for driver_set in selection.driver_sets %}
+                                <article class="result-card">
+                                    <h4>{{ driver_set.name }}</h4>
+                                    <p>{{ t("Drivers:") }} {% for index in driver_set.driver_indices %}{{ selection.participants[index].name }}{% if not loop.last %}, {% endif %}{% endfor %}</p>
+                                    <div class="badge-row"><span class="badge">{{ t("Seats") }} {{ driver_set.total_seats }}</span><span class="badge">{{ t("Drivers") }} {{ driver_set.driver_indices|length }}</span></div>
+                                </article>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </section>
+                    {% endif %}
+                    {% if optimization %}
+                    <section class="panel" id="optimization-results-section">
+                        <h3>{{ t("Optimization Results") }}<span class="ant-trail" aria-hidden="true"><svg class="pic"><use href="#pic-ant"/></svg><svg class="pic"><use href="#pic-ant"/></svg><svg class="pic"><use href="#pic-ant"/></svg></span></h3>
+                        {% if optimization.best_result %}
+                        <article class="result-card best-plan-card">
+                            <h3>{{ t("Best Plan:") }} {{ optimization.best_result.driver_set_name }}</h3>
+                            <div class="badge-row">
+                                <span class="badge">{{ optimization.best_result.assignments|length }} {{ t("active cars") }}</span>
+                                <span class="badge">{{ '%.2f'|format(optimization.best_result.total_distance_km) }} km</span>
+                                <span class="badge">EUR {{ '%.2f'|format(optimization.best_result.total_cost_eur) }}</span>
+                                {% if optimization.best_result.plan_variant == 'meetup' %}<span class="badge">{{ t("Meetup pooling") }}</span>{% endif %}
+                            </div>
+                            {% if optimization.impact %}
+                            <div class="impact-strip">
+                                <strong class="impact-title">{{ t("Shared-ride impact vs everyone driving alone") }}</strong>
+                                <div class="impact-grid">
+                                    <span class="impact-chip">🚗 {{ optimization.impact.cars_saved }} {{ t("fewer cars") }}</span>
+                                    <span class="impact-chip">🛣️ {{ '%.0f'|format(optimization.impact.km_saved) }} {{ t("km saved") }}</span>
+                                    <span class="impact-chip">💶 EUR {{ '%.2f'|format(optimization.impact.cost_saved_eur) }} {{ t("saved") }}</span>
+                                    <span class="impact-chip">🌱 {{ '%.1f'|format(optimization.impact.co2_saved_kg) }} kg CO₂ {{ t("avoided") }}</span>
+                                </div>
+                            </div>
+                            {% endif %}
+                            <div class="inline-actions">
+                                <a class="button-link" href="/share/current" target="_blank" rel="noopener">{{ t("Open Share Report") }}</a>
+                                <a class="button-link secondary-link" href="/share/current?download=true">{{ t("Download HTML") }}</a>
+                            </div>
+                            <details class="result-details">
+                                <summary>{{ t("Details") }}</summary>
+                                <div class="badge-row">
+                                    <span class="badge">Fitness {{ '%.4f'|format(optimization.best_result.fitness) }}</span>
+                                    {% set solver_meta = solver_catalog.get(optimization.best_result.solver_used|default('local_search')) %}
+                                    {% if solver_meta %}<span class="badge">{{ t("Solver") }} {{ solver_meta.name }}</span>{% endif %}
+                                    <span class="badge">{{ t("Longest route") }} {{ '%.0f'|format(optimization.best_result.max_route_duration_min) }} min</span>
+                                    <span class="badge">{{ t("Route spread") }} {{ '%.0f'|format(optimization.best_result.route_duration_spread_min) }} min</span>
+                                    {% if optimization.best_result.plan_variant == 'meetup' %}<span class="badge">{{ t("Self-transfer") }} {{ '%.1f'|format(optimization.best_result.meetup_total_self_transfer_km) }} km</span>{% endif %}
+                                    {% if optimization.best_result.return_assignments %}<span class="badge">{{ t("Return regrouping enabled") }}</span>{% endif %}
+                                </div>
+                                {% if optimization.best_result_reasons %}
+                                <div class="explanation-list">
+                                    {% for reason in optimization.best_result_reasons %}
+                                    <p>{{ reason }}</p>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                            </details>
+                        </article>
+                        {% endif %}
+                        {% set complete_costs = optimization.trip_results | selectattr('unassigned_passenger_indices', 'equalto', []) | map(attribute='total_cost_eur') | list %}
+                        {% set cheapest_cost = complete_costs | min if complete_costs else None %}
+                        {% for trip in optimization.trip_results %}
+                        <article class="result-card">
+                            <h3>{{ trip.driver_set_name }}</h3>
+                            <div class="badge-row">
+                                {% if cheapest_cost is not none and trip.total_cost_eur == cheapest_cost and not trip.unassigned_passenger_indices %}<span class="badge badge-cheapest">{{ t("Cheapest plan") }}</span>{% endif %}
+                                <span class="badge">{{ trip.assignments|length }} {{ t("cars") }}</span>
+                                <span class="badge">{{ '%.0f'|format(trip.total_distance_km) }} km</span>
+                                <span class="badge">EUR {{ '%.2f'|format(trip.total_cost_eur) }}</span>
+                                {% if trip.plan_variant == 'meetup' %}<span class="badge">{{ t("Meetup pooling") }}</span>{% endif %}
+                            </div>
+                            <details class="result-details">
+                                <summary>{{ t("Details") }}</summary>
+                                <div class="badge-row">
+                                    <span class="badge">{{ t("Fitness") }} {{ '%.4f'|format(trip.fitness) }}</span>
+                                    <span class="badge">{{ t("Longest route") }} {{ '%.0f'|format(trip.max_route_duration_min) }} min</span>
+                                    <span class="badge">{{ t("Route spread") }} {{ '%.0f'|format(trip.route_duration_spread_min) }} min</span>
+                                    <span class="badge">{{ t("Timing mismatch") }} {{ '%.0f'|format(trip.total_time_window_violation_min) }} min</span>
+                                    {% if trip.plan_variant == 'meetup' %}<span class="badge">{{ t("Self-transfer") }} {{ '%.1f'|format(trip.meetup_total_self_transfer_km) }} km</span>{% endif %}
+                                    {% if trip.return_assignments %}<span class="badge">{{ t("Return mismatch") }} {{ '%.0f'|format(trip.return_total_time_window_violation_min) }} min</span>{% endif %}
+                                </div>
+                            </details>
+                            {% if trip.meetup_instructions %}
+                            <div class="muted">
+                                {% for instruction in trip.meetup_instructions %}
+                                <div>{{ instruction }}</div>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                            <div class="inline-actions">
+                                <button type="button" class="secondary" data-show-route-set="{{ loop.index0 }}">{{ t("Show on map") }}</button>
+                                <a class="button-link" href="/share/current?route_set_index={{ loop.index0 }}" target="_blank" rel="noopener">{{ t("Share This Plan") }}</a>
+                                <a class="button-link secondary-link" href="/share/current?route_set_index={{ loop.index0 }}&download=true">{{ t("Download HTML") }}</a>
+                            </div>
+                            {% for assignment in trip.assignments %}
+                            <div class="assignment sign sign-card">
+                                <div class="sign-head">
+                                    <h4><span class="targa targa-driver"><span>{{ optimization.participants[assignment.driver_index].name }}</span></span>{% if optimization.participants[assignment.driver_index].car and optimization.participants[assignment.driver_index].car.vehicle_type == 'motorbike' %}<span class="sign-note">{{ t("motorbike") }}</span>{% endif %}</h4>
+                                    <span title="{{ t('Fuel EUR') }} {{ '%.2f'|format(assignment.fuel_cost_eur) }} + {{ t('Estimated toll EUR') }} {{ '%.2f'|format(assignment.toll_cost_eur) }}">{{ '%.0f'|format(assignment.route_distance_km) }} km · EUR {{ '%.2f'|format(assignment.cost_per_person_eur) }}{{ t("/person") }}</span>
+                                </div>
+                                <div class="sign-towns">
+                                    {% if assignment.outbound_departure_time %}<div><span>{{ t("Outbound departure:") }}</span><span>{{ assignment.outbound_departure_time }}</span></div>{% endif %}
+                                    {% for passenger_index in assignment.passenger_indices %}
+                                    <div><span class="targa"><span>{{ optimization.participants[passenger_index].name }}</span></span><span>{{ assignment.pickup_schedule[loop.index0] if assignment.pickup_schedule and loop.index0 < assignment.pickup_schedule|length else '' }}</span></div>
+                                    {% else %}
+                                    <div><span>{{ t("Drives alone") }}</span></div>
+                                    {% endfor %}
+                                    <div title="{{ t('Estimated arrival at destination:') }}"><span>➚ {{ destination.name if destination else t("Destination") }}</span><span>{{ assignment.destination_arrival_time or '' }}</span></div>
+                                    {% if assignment.return_departure_time %}<div><span>{{ t("Best return departure:") }}</span><span>{{ assignment.return_departure_time }}</span></div>{% endif %}
+                                </div>
+                                {% if assignment.time_window_violation_min > 0 %}<span class="badge badge-warning">{{ t("Timing mismatch") }} {{ '%.0f'|format(assignment.time_window_violation_min) }} min</span>{% endif %}
+                            </div>
+                            {% endfor %}
+                            {% if trip.return_assignments %}
+                            <div class="assignment return-section">
+                                <div class="assignment-head">
+                                    <strong>{{ t("Separate Return Plan") }}</strong>
+                                    <div class="badge-row">
+                                        <span class="badge">{{ '%.2f'|format(trip.return_total_distance_km) }} km</span>
+                                        <span class="badge">EUR {{ '%.2f'|format(trip.return_total_cost_eur) }}</span>
+                                        <span class="badge">{{ t("Timing mismatch") }} {{ '%.0f'|format(trip.return_total_time_window_violation_min) }} min</span>
+                                    </div>
+                                </div>
+                                {% for assignment in trip.return_assignments %}
+                                <div class="muted">
+                                    <div><strong>{{ optimization.participants[assignment.driver_index].name }}</strong>{% if assignment.return_departure_time %} {{ t("leaves destination at") }} {{ assignment.return_departure_time }}{% endif %}</div>
+                                    <div>{% if assignment.passenger_indices %}{{ t("Returns with") }} {% for passenger_index in assignment.passenger_indices %}{{ optimization.participants[passenger_index].name }}{% if not loop.last %}, {% endif %}{% endfor %}{% else %}{{ t("Returns solo") }}{% endif %}</div>
+                                    <div>{{ '%.2f'|format(assignment.route_distance_km) }} km | EUR {{ '%.2f'|format(assignment.cost_per_person_eur) }}{{ t("/person") }} | {{ t("Fuel EUR") }} {{ '%.2f'|format(assignment.fuel_cost_eur) }} | {{ t("Estimated toll EUR") }} {{ '%.2f'|format(assignment.toll_cost_eur) }} | {{ t("Timing mismatch") }} {{ '%.0f'|format(assignment.time_window_violation_min) }} min</div>
+                                    {% for stop in assignment.pickup_schedule %}
+                                    <div>{{ stop }}</div>
+                                    {% endfor %}
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </article>
+                        {% endfor %}
+                        {% if optimization.trip_results %}
+                        <section>
+                            <h3>{{ t("Route Comparison") }}</h3>
+                            <div class="table-scroll">
+                            <table>
+                                <thead><tr><th>{{ t("Driver Set") }}</th><th>{{ t("Fitness") }}</th><th>{{ t("Distance") }}</th><th>{{ t("Cost") }}</th><th>{{ t("Timing mismatch") }}</th><th>{{ t("Return mismatch") }}</th></tr></thead>
+                                <tbody>
+                                    {% for trip in optimization.trip_results %}
+                                    <tr>
+                                        <td>{{ trip.driver_set_name }}{% if trip.plan_variant == 'meetup' %}<div class="muted">{{ t("Meetup pooling") }}</div>{% endif %}</td>
+                                        <td>{{ '%.4f'|format(trip.fitness) }}</td>
+                                        <td>{{ '%.2f'|format(trip.total_distance_km) }} km</td>
+                                        <td>EUR {{ '%.2f'|format(trip.total_cost_eur) }}</td>
+                                        <td>{{ '%.0f'|format(trip.total_time_window_violation_min) }} min{% if trip.plan_variant == 'meetup' %}<div class="muted">+ {{ '%.1f'|format(trip.meetup_total_self_transfer_km) }} km {{ t("Self-transfer") }}</div>{% endif %}</td>
+                                        <td>{% if trip.return_assignments %}{{ '%.0f'|format(trip.return_total_time_window_violation_min) }} min{% else %}-{% endif %}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                            </div>
+                        </section>
+                        {% endif %}
+                    </section>
+                    {% endif %}
+                    {% if not selection and not optimization %}
+                    <p class="muted">{{ t("Run driver selection or the full optimization to see plans here.") }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </section>
+        {% endif %}
+
+        {% if is_share %}
+        <section class="road-strip post-strip" aria-hidden="true">
+            <span class="road-sign"><svg class="pic"><use href="#pic-posthorn"/></svg> {{ t("Share the plan") }}</span>
+            <svg class="pic postbox" id="postbox"><use href="#pic-postbox"/></svg>
+            <div class="postino-ride">
+                <svg class="pic postino"><use href="#pic-postino"/></svg>
+                <svg class="pic post-letter"><use href="#pic-envelope"/></svg>
+            </div>
+        </section>
+        {% endif %}
+
+        {% if is_share and driver_messages %}
+        <section class="panel" id="current-plan-share">
+            <div class="panel-head">
+                <h2>{{ t("Current plan") }}: {{ share_plan_name }}</h2>
+                <div class="inline-actions">
+                    <a class="button-link" href="/share/current?route_set_index={{ share_route_set_index }}" target="_blank" rel="noopener">{{ t("Open Share Report") }}</a>
+                    <a class="button-link secondary-link" href="/share/current?route_set_index={{ share_route_set_index }}&download=true">{{ t("Download HTML") }}</a>
+                </div>
+            </div>
+            <div class="saved-list">
+                {% for message in driver_messages %}
+                <article class="mini-card driver-message letter">
+                    <span class="stamp"><svg class="pic"><use href="#pic-stamp"/></svg></span>
+                    <span class="postmark">{% if destination %}{{ destination.name }}<br>{% endif %}{{ share_postmark_date }}</span>
+                    <strong>{{ message.driver }}</strong>
+                    <pre class="pre-wrap">{{ message.text }}</pre>
+                    <div class="inline-actions">
+                        <button type="button" class="secondary" data-post data-copy-text="{{ message.text }}" data-copy-done="{{ t('Message copied') }}">{{ t("Copy message") }}</button>
+                        <a class="button-link secondary-link" data-post href="{{ message.whatsapp_url }}" target="_blank" rel="noopener">{{ t("Share on WhatsApp") }}</a>
+                    </div>
+                </article>
+                {% endfor %}
+            </div>
+        </section>
+        {% endif %}
+
+        {% if is_share and not driver_messages %}
+        <section class="panel"><p class="muted">{{ t("No optimized plan yet.") }} <a href="/plan?tab=results">{{ t("Run the plan to get driver messages here.") }}</a></p></section>
+        {% endif %}
+
+        {% if is_share %}
+        <section class="panel" id="guest-invites-panel">
+                <div class="grid">
+                    <section>
+                        <h3 title="{{ t('Create a guest form from the current destination and share separate guest or admin links when needed.') }}">{{ t("Create Invite") }}</h3>
+                        <form method="post" action="/settings/public-share-url" class="stack-form">
+                            <label><span>{{ t("Guest tunnel URL") }}</span><input name="guest_public_base_url" type="url" placeholder="https://guest-subdomain.trycloudflare.com" value="{{ guest_public_base_url }}"></label>
+                            <label><span>{{ t("Admin tunnel URL") }}</span><input name="admin_public_base_url" type="url" placeholder="https://admin-subdomain.trycloudflare.com" value="{{ admin_public_base_url }}"></label>
+                            <button type="submit">{{ t("Save public links") }}</button>
+                        </form>
+                        <p class="muted" title="{{ t('The tunnel keeps running after you close PowerShell until you stop it.') }}">{{ t("Quick Tunnel manager:") }} <code>start-tunnel.cmd -Mode guest</code> {{ t("or") }} <code>start-tunnel.cmd -Mode admin</code>.</p>
+                        <form method="post" action="/invites" class="stack-form">
+                            <label><span>{{ t("Invite Name") }}</span><input name="trip_name" placeholder="{{ t('Friday dinner guest form') }}" required></label>
+                            <label><span>{{ t("Reply deadline") }}</span><input name="deadline_at" type="datetime-local"></label>
+                            <label><span>{{ t("Notes") }}</span><textarea name="notes" rows="3" placeholder="{{ t('Optional message for guests') }}"></textarea></label>
+                            <button type="submit"><svg class="pic"><use href="#pic-posthorn"/></svg> {{ t("Create invite link") }}</button>
+                        </form>
+                    </section>
+                    <section>
+                        <h3>{{ t("Active Invites") }}</h3>
+                        {% if trip_invites %}
+                        <div class="saved-list">
+                            {% for invite in trip_invites %}
+                            <article class="mini-card letter">
+                                <span class="stamp"><svg class="pic"><use href="#pic-stamp"/></svg></span>
+                                <strong>{{ invite.trip_name }}</strong>
+                                <span class="muted">{{ invite.destination_name }}{% if invite.target_arrival_time %} - {{ t("arrival") }} {{ invite.target_arrival_time }}{% endif %}</span>
+                                <span class="muted">{{ invite.response_count }} {{ t("responses") }}{% if invite.imported_count %} - {{ invite.imported_count }} {{ t("imported") }}{% endif %}</span>
+                                <span class="muted">{{ invite.public_link }}</span>
+                                <div class="inline-actions">
+                                    <a class="button-link secondary-link" href="/invite/{{ invite.token }}" target="_blank" rel="noopener">{{ t("Open form") }}</a>
+                                    <a class="button-link" href="/invites/{{ invite.id }}">{{ t("Review submissions") }}</a>
+                                    {% if invite.whatsapp_url %}<a class="button-link secondary-link" href="{{ invite.whatsapp_url }}" target="_blank" rel="noopener">{{ t("Share on WhatsApp") }}</a>{% endif %}
+                                    <button type="button" class="secondary" data-copy-text="{{ invite.public_link }}" data-copy-done="{{ t('Link copied') }}">{{ t("Copy link") }}</button>
+                                    <a class="button-link secondary-link" href="/invites/{{ invite.id }}/qr.svg" target="_blank" rel="noopener">{{ t("QR code") }}</a>
+                                </div>
+                            </article>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <p class="muted empty-postbox"><svg class="pic"><use href="#pic-postbox"/></svg> {{ t("No guest invites yet.") }}</p>
+                        {% endif %}
+                    </section>
+                </div>
+        </section>
+        {% endif %}
+
+        {% if is_settings %}
+        <section class="panel">
+                <h2>{{ t("Map & planning") }}</h2>
+                <form method="post" action="/settings" class="form-grid">
+                    <label><span>{{ t("Map Latitude") }}</span><input name="map_latitude" type="number" step="any" value="{{ settings.map_center.latitude }}"></label>
+                    <label><span>{{ t("Map Longitude") }}</span><input name="map_longitude" type="number" step="any" value="{{ settings.map_center.longitude }}"></label>
+                    <label><span>{{ t("Map Zoom") }}</span><input name="map_zoom" type="number" value="{{ settings.map_center.zoom }}"></label>
+                    <label><span>{{ t("Max meetup self-transfer (km)") }}</span><input name="max_meetup_self_transfer_km" type="number" step="any" min="0" value="{{ settings.optimization.max_meetup_self_transfer_km }}"></label>
+                    <label class="checkbox"><input name="allow_meetup_pooling" type="checkbox" value="true" {% if settings.optimization.allow_meetup_pooling %}checked{% endif %}><span>{{ t("Suggest meetup pooling plan for flexible passengers") }}</span></label>
+                    <label class="checkbox"><input name="notifications_enabled" type="checkbox" value="true" {% if settings.notifications.enabled %}checked{% endif %}><span>{{ t("Desktop notifications for guest visits and submissions") }}</span></label>
+                    <details class="advanced-fields" id="advanced-settings-panel">
+                        <summary>{{ t("Advanced optimizer") }}<span class="ant-trail" aria-hidden="true"><svg class="pic"><use href="#pic-ant"/></svg><svg class="pic"><use href="#pic-ant"/></svg><svg class="pic"><use href="#pic-ant"/></svg></span></summary>
+                        <div class="advanced-grid">
+                            <label><span>{{ t("Algorithm") }}</span>
+                                <select name="algorithm" id="solver-select">
+                                    {% for key, meta in solver_catalog.items() %}
+                                    <option value="{{ key }}" {% if settings.optimization.algorithm == key %}selected{% endif %}>{{ meta.name }}{% if key == 'local_search' %} · {{ t("recommended") }}{% endif %}</option>
+                                    {% endfor %}
+                                </select>
+                            </label>
+                            <label><span>{{ t("Ants") }}</span><input name="num_ants" type="number" value="{{ settings.optimization.num_ants }}"></label>
+                            <label><span>{{ t("Iterations") }}</span><input name="num_iterations" type="number" value="{{ settings.optimization.num_iterations }}"></label>
+                            <label><span>Alpha</span><input name="alpha" type="number" step="any" value="{{ settings.optimization.alpha }}"></label>
+                            <label><span>Beta</span><input name="beta" type="number" step="any" value="{{ settings.optimization.beta }}"></label>
+                            <label><span>Rho</span><input name="rho" type="number" step="any" value="{{ settings.optimization.rho }}"></label>
+                            <div class="solver-hints" id="solver-hints">
+                                {% for key, meta in solver_catalog.items() %}
+                                <article class="solver-hint{% if settings.optimization.algorithm == key %} active{% endif %}" data-solver="{{ key }}">
+                                    <strong>{{ meta.name }}</strong>
+                                    <dl class="solver-bars">
+                                        <dt>{{ t("Speed") }}</dt><dd><meter min="0" max="3" value="{{ meta.speed }}"></meter></dd>
+                                        <dt>{{ t("Plan quality") }}</dt><dd><meter min="0" max="3" value="{{ meta.quality }}"></meter></dd>
+                                        <dt>{{ t("Consistency") }}</dt><dd><meter min="0" max="3" value="{{ meta.consistency }}"></meter></dd>
+                                    </dl>
+                                    <p class="solver-pro">{{ t(meta.pro) }}</p>
+                                    <p class="solver-con">{{ t(meta.con) }}</p>
+                                </article>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </details>
+                    <button type="submit">{{ t("Save defaults") }}</button>
+                </form>
+        </section>
+        <section class="panel" id="security-panel">
+            <h2>{{ t("Security") }}</h2>
+            {% if auth_enabled %}
+            <p class="muted">{{ t("Admin pages require the organizer password. Guest invite links stay open without a login.") }}</p>
+            {% else %}
+            <p class="muted" title="{{ t('No password set: anyone who can reach this app (including the admin tunnel link) has full control. Set an organizer password before sharing admin access.') }}">{{ t("No password set.") }}</p>
+            {% endif %}
+            <form method="post" action="/settings/security" class="form-grid">
+                {% if auth_enabled %}
+                <label><span>{{ t("Current password") }}</span><input type="password" name="current_password" autocomplete="current-password"></label>
+                {% endif %}
+                <label><span>{{ t("New password") }}</span><input type="password" name="new_password" minlength="8" autocomplete="new-password" placeholder="{{ t('At least 8 characters') }}"></label>
+                <label><span>{{ t("Confirm new password") }}</span><input type="password" name="confirm_password" autocomplete="new-password"></label>
+                <div class="inline-actions">
+                    <button type="submit">{{ t("Save password") }}</button>
+                </div>
+            </form>
+            {% if auth_enabled %}
+            <p class="muted">{{ t("To remove protection: enter the current password, leave the new password empty, and save.") }}</p>
+            <div class="inline-actions">
+                <form method="post" action="/logout"><button class="secondary" type="submit">{{ t("Log out") }}</button></form>
+            </div>
+            {% endif %}
+        </section>
+        <p class="muted"><a href="/welcome">{{ t("About Drivers Manager") }}</a></p>
+        {% endif %}
+
+
+        {% if is_trips %}
+        <section class="panel" id="trip-history-panel">
+                <h2>{{ t("Past trips") }}</h2>
+                {% for entry in trip_history %}
+                <article class="mini-card">
+                    <strong>{{ entry.trip_name }}</strong>
+                    <span class="muted">{{ entry.trip_date or entry.created_at }}{% if entry.preset_name %} | {{ entry.preset_name }}{% endif %}</span>
+                    {% if entry.notes %}<span class="muted">{{ entry.notes }}</span>{% endif %}
+                    <div class="inline-actions">
+                        <a class="button-link" href="/history/{{ entry.id }}/snapshot" target="_blank">{{ t("Open snapshot") }}</a>
+                        <form method="post" action="/history/{{ entry.id }}/restore"><button type="submit" data-confirm="{{ t('Load this past trip? Your current trip is saved first.') }}">{{ t("Load this trip") }}</button></form>
+                        <form method="post" action="/history/{{ entry.id }}/delete"><button class="danger" type="submit" data-confirm="{{ t('Delete this past trip?') }}">{{ t("Delete") }}</button></form>
+                    </div>
+                </article>
+                {% else %}
+                <p class="muted">{{ t("No past trips yet.") }}</p>
+                {% endfor %}
+        </section>
+        {% endif %}
+    </main>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+    <script>
+        window.DMProjectConfig = {
+            optimizeOnLoad: {{ 'true' if optimization else 'false' }},
+            fitMode: "all",
+            mapDefaults: {{ settings.map_center | tojson }},
+            tripPresets: {{ trip_presets | tojson }},
+            fuelTypeDefaults: {{ fuel_type_defaults | tojson }},
+            staticVersion: {{ static_asset_version | tojson }}
+        };
+    </script>
+    <script src="{{ url_for('static', path='/app.js') }}?v={{ static_asset_version }}"></script>
+    <script>
+        if ("serviceWorker" in navigator) {
+            window.addEventListener("load", function () {
+                navigator.serviceWorker.register("/sw.js").catch(function () { /* offline support is optional */ });
+            });
+        }
+    </script>
+</body>
+</html>

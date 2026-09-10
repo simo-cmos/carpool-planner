@@ -1,0 +1,17 @@
+<details class="language-menu">
+    <summary class="language-menu-toggle" aria-label="{{ t('Language') }}">
+        <img class="language-menu-flag" src="{{ url_for('static', path='/flag-' ~ current_language ~ '.svg') }}" alt="{{ t('Language') }}">
+    </summary>
+    <div class="language-menu-list">
+        {% for language in supported_languages %}
+        <form method="post" action="/language">
+            <input type="hidden" name="redirect_to" value="{{ language_redirect_to }}">
+            <input type="hidden" name="language" value="{{ language.code }}">
+            <button type="submit" class="language-menu-option{% if language.code == current_language %} active{% endif %}">
+                <img class="language-menu-option-flag" src="{{ url_for('static', path='/flag-' ~ language.code ~ '.svg') }}" alt="">
+                <span class="language-menu-option-label">{{ language.label }}</span>
+            </button>
+        </form>
+        {% endfor %}
+    </div>
+</details>

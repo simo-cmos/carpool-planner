@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="{{ current_language }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ t("Guest Invites") }}</title>
+    {% include "_brand_head.html" %}
+    <link rel="stylesheet" href="{{ url_for('static', path='/style.css') }}">
+</head>
+<body>
+    <main class="page">
+        {% include "_language_selector.html" %}
+        <section class="panel">
+            <p class="eyebrow">{{ t("Guest Access") }}</p>
+            <h1>{{ t("Join a Trip") }}</h1>
+            <p class="lede">{{ t("Open your invite and share your trip details here.") }}</p>
+            {% if public_base_url %}
+            <p class="muted">{{ t("Public portal") }}: {{ public_base_url }}</p>
+            {% endif %}
+        </section>
+        <section class="panel">
+            <h2>{{ t("Open Invites") }}</h2>
+            {% if open_invites %}
+            <div class="saved-list">
+                {% for invite in open_invites %}
+                <article class="mini-card">
+                    <strong>{{ invite.trip_name }}</strong>
+                    <span class="muted">{{ invite.destination_name }}</span>
+                    {% if invite.target_arrival_time %}<span class="muted">{{ t("Target arrival") }}: {{ invite.target_arrival_time }}</span>{% endif %}
+                    {% if invite.deadline_at %}<span class="muted">{{ t("Reply deadline") }}: {{ invite.deadline_at }}</span>{% endif %}
+                    <div class="inline-actions">
+                        <a class="button-link" href="/invite/{{ invite.token }}">{{ t("Open guest form") }}</a>
+                    </div>
+                </article>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="muted">{{ t("No guest invites are open right now. Ask the organizer for a direct invite link.") }}</p>
+            {% endif %}
+        </section>
+    </main>
+</body>
+</html>

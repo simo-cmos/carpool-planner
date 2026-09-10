@@ -1,0 +1,15 @@
+<meta name="theme-color" content="#0E7C3F">
+<script>(function () {
+    var theme = null;
+    try { theme = window.localStorage.getItem("dmproject.theme"); } catch (_e) { /* storage may be blocked */ }
+    if (theme !== "dark" && theme !== "light") {
+        theme = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    }
+    document.documentElement.dataset.theme = theme;
+}());</script>
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" type="image/png" href="{{ url_for('static', path='/app-icon-192.png') }}">
+<link rel="apple-touch-icon" href="{{ url_for('static', path='/apple-touch-icon.png') }}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Overpass:wght@600;700;800&family=IBM+Plex+Sans:wght@400;500;600&display=swap">

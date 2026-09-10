@@ -1,0 +1,13 @@
+<header class="topbar">
+    <a class="plate" href="/" aria-label="Drivers Manager"><span class="plate-band" aria-hidden="true">I</span><span class="plate-text">DM</span></a>
+    <nav class="topbar-nav" aria-label="{{ t('App sections') }}">
+        {% for page in page_links %}
+        <a class="topbar-link{% if page.is_active %} active{% endif %}" href="{{ page.path }}"{% if page.is_active %} aria-current="page"{% endif %}>{{ t(page.label) }}</a>
+        {% endfor %}
+    </nav>
+    <div class="topbar-tools">
+        <button type="button" id="help-toggle" class="help-toggle" aria-pressed="true" aria-label="{{ t('Help') }}" title="{{ t('Help') }}"><span aria-hidden="true">i</span></button>
+        <button type="button" id="theme-toggle" class="theme-toggle" aria-label="{{ t('Switch color theme') }}"><span class="theme-toggle-icon" aria-hidden="true"></span></button>
+        {% include "_language_selector.html" %}
+    </div>
+</header>

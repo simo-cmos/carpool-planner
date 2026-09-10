@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="{{ current_language }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ invite.trip_name }} - {{ t("Guest Preview") }}</title>
+    {% include "_brand_head.html" %}
+    <link rel="stylesheet" href="{{ url_for('static', path='/style.css') }}">
+</head>
+<body>
+    <main class="page">
+        {% include "_language_selector.html" %}
+        <section class="panel">
+            <p class="eyebrow">{{ t("Guest Preview") }}</p>
+            <h1>{{ invite.trip_name }}</h1>
+            <p class="lede">{{ t("Preview how this trip could work based on the guest responses collected so far.") }}</p>
+            <div class="inline-actions">
+                <a class="button-link" href="/invite/{{ invite.token }}?response_token={{ response_data.response_token }}">{{ t("Edit my details") }}</a>
+                {% if response_data.has_car %}
+                <a class="button-link secondary-link" href="/invite/{{ invite.token }}/preview?response_token={{ response_data.response_token }}&mode=driver">{{ t("What if I drive?") }}</a>
+                {% endif %}
+                <a class="button-link secondary-link" href="/invite/{{ invite.token }}/preview?response_token={{ response_data.response_token }}&mode=passenger">{{ t("What if I ride?") }}</a>
+            </div>
+        </section>
+
+        <section class="grid">
+            <article class="panel">
+                <h2>{{ t("Your trip view") }}</h2>
+                <div class="badge-row">
+                    <span class="badge">{{ t("Mode") }} {{ t('Drive') if preview.mode == 'driver' else t('Ride') }}</span>
+                    <span class="badge">{{ t("Direct trip") }} {{ '%.1f'|format(preview.direct_distance_km) }} km</span>
+                    <span class="badge">{{ t("Approx") }} {{ '%.0f'|format(preview.direct_duration_min) }} min</span>
+                    <span class="badge">{{ t("Submitted guests") }} {{ preview.submitted_count }}</span>
+                </div>
+                {% if preview.mode == 'driver' %}
+                <p class="muted">{% if current_language == 'it' %}Se guidi, il planner ti considererà come un autista disponibile in più con circa {{ preview.seats_if_driving }} posti passeggeri.{% elif current_language == 'fr' %}Si vous conduisez, le planificateur vous traitera comme un conducteur disponible de plus avec environ {{ preview.seats_if_driving }} places passagers.{% elif current_language == 'es' %}Si conduces, el planificador te tratará como un conductor disponible más con unas {{ preview.seats_if_driving }} plazas de pasajero.{% else %}If you drive, the planner would treat you as one more available driver with about {{ preview.seats_if_driving }} passenger seats.{% endif %}</p>
+                {% else %}
+                <p class="muted">{% if current_language == 'it' %}Se viaggi da passeggero, il planner proverà ad abbinarti all'autista disponibile più adatto alla tua posizione e ai tuoi orari.{% elif current_language == 'fr' %}Si vous venez comme passager, le planificateur essaiera de vous associer au conducteur disponible le plus adapté à votre position et à vos horaires.{% elif current_language == 'es' %}Si vas como pasajero, el planificador intentará emparejarte con el conductor disponible que mejor se adapte a tu ubicación y a tus horarios.{% else %}If you ride, the planner will try to match you with one of the available drivers who fits your location and timing best.{% endif %}</p>
+                {% endif %}
+                <p class="muted">{{ t("Potential active drivers from submitted responses") }}: {{ preview.active_driver_count }}</p>
+            </article>
+
+            <article class="panel">
+                <h2>{{ t("Nearby Matchups") }}</h2>
+                {% if preview.nearby_people %}
+                <div class="saved-list">
+                    {% for person in preview.nearby_people %}
+                    <article class="mini-card">
+                        <strong>{{ person.name }}</strong>
+                        <span class="muted">{{ '%.1f'|format(person.distance_km) }} {{ t("km away from you") }}</span>
+                    </article>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="muted">{{ t("No matching nearby submissions yet.") }}</p>
+                {% endif %}
+            </article>
+        </section>
+
+        <section class="panel">
+            <h2>{{ t("Route Preview") }}</h2>
+            {% if sandbox_error %}
+            <p class="muted">{{ sandbox_error }}</p>
+            {% elif sandbox and sandbox.best_result %}
+            <form method="get" action="/invite/{{ invite.token }}/preview" class="stack-form">
+                <input type="hidden" name="response_token" value="{{ response_data.response_token }}">
+                <input type="hidden" name="mode" value="{{ sandbox_mode }}">
+                <label>
+                    <span>{{ t("Routing option") }}</span>
+                    <select name="route_set_index">
+                        {% for route_set in sandbox_map_payload.route_sets %}
+                        <option value="{{ route_set.route_set_index }}" {% if route_set.route_set_index == chosen_route_set_index %}selected{% endif %}>
+                            {{ route_set.driver_set_name }} · {{ '%.1f'|format(route_set.total_distance_km) }} km{% if route_set.total_duration_min %} · {{ '%.0f'|format(route_set.total_duration_min) }} min{% endif %}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </label>
+                <button type="submit">{{ t("Show this route option") }}</button>
+            </form>
+            <div class="badge-row">
+                <span class="badge">{{ t("Showing") }} {{ selected_trip.driver_set_name if selected_trip else sandbox.best_result.driver_set_name }}</span>
+                <span class="badge">{{ '%.1f'|format(selected_trip.total_distance_km if selected_trip else sandbox.best_result.total_distance_km) }} km</span>
+                <span class="badge">EUR {{ '%.2f'|format(selected_trip.total_cost_eur if selected_trip else sandbox.best_result.total_cost_eur) }}</span>
+                <span class="badge">{{ (selected_trip.assignments|length) if selected_trip else (sandbox.best_result.assignments|length) }} {{ t("Cars available right now") }}</span>
+            </div>
+            {% if share_map_svg %}
+            <div class="share-map">{{ share_map_svg|safe }}</div>
+            <div class="map-legend">
+                <span><i class="legend-chip" style="background:#111827;"></i> {{ t("Destination") }}</span>
+                <span><i class="legend-chip" style="background:#edae49;"></i> {{ t("Numbered pickups") }}</span>
+                <span><i class="legend-chip" style="background:#1a7f64;"></i> {{ t("Driver route labels") }}</span>
+            </div>
+            {% if selected_route_set %}
+            <div class="route-legend">
+                {% for route in selected_route_set.routes %}
+                <div class="route-legend-item">
+                    <div class="route-legend-main">
+                        <span class="route-swatch" style="background: {{ route.color }};"></span>
+                        <span>{{ route.driver_name }}</span>
+                    </div>
+                    <span class="muted">
+                        {% if route.passenger_names %}
+                        {{ t("Picks up") }} {{ route.passenger_names|join(', ') }}
+                        {% else %}
+                        {{ t("Solo drive") }}
+                        {% endif %}
+                    </span>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+            {% endif %}
+            <div class="route-grid">
+                {% for assignment in (selected_trip.assignments if selected_trip else sandbox.best_result.assignments) %}
+                <article class="result-card">
+                    <h3>{{ sandbox.participants[assignment.driver_index].name }}</h3>
+                    <div class="badge-row">
+                        <span class="badge">{{ assignment.passenger_indices|length }} {{ t("passengers") }}</span>
+                        <span class="badge">{{ '%.2f'|format(assignment.route_distance_km) }} km</span>
+                        <span class="badge">{{ '%.0f'|format(assignment.route_duration_min or 0) }} min</span>
+                        <span class="badge">EUR {{ '%.2f'|format(assignment.route_cost_eur) }}</span>
+                        <span class="badge">EUR {{ '%.2f'|format(assignment.cost_per_person_eur) }}/person</span>
+                    </div>
+                    <p>
+                        {% if assignment.passenger_indices %}
+                        {{ t("Picks up") }} {% for passenger_index in assignment.passenger_indices %}{{ sandbox.participants[passenger_index].name }}{% if not loop.last %}, {% endif %}{% endfor %}
+                        {% else %}
+                        {{ t("Drives alone") }}
+                        {% endif %}
+                    </p>
+                    <div class="badge-row">
+                        {% if assignment.outbound_departure_time %}<span class="badge">{{ t("Departs") }} {{ assignment.outbound_departure_time }}</span>{% endif %}
+                        {% if assignment.destination_arrival_time %}<span class="badge">{{ t("Arrives") }} {{ assignment.destination_arrival_time }}</span>{% endif %}
+                        {% if assignment.return_departure_time %}<span class="badge">{{ t("Return") }} {{ assignment.return_departure_time }}</span>{% endif %}
+                    </div>
+                    {% if assignment.pickup_schedule %}
+                    <ul class="stop-list">
+                        {% for item in assignment.pickup_schedule %}
+                        <li>{{ item }}</li>
+                        {% endfor %}
+                    </ul>
+                    {% endif %}
+                </article>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="muted">{% if current_language == 'it' %}Dati ospiti ancora insufficienti per costruire un percorso sandbox.{% elif current_language == 'fr' %}Pas encore assez de données invitées pour construire un itinéraire sandbox.{% elif current_language == 'es' %}Todavía no hay suficientes datos de invitados para construir una ruta sandbox.{% else %}Not enough guest data yet to build a sandbox route.{% endif %}</p>
+            {% endif %}
+        </section>
+
+        <section class="panel">
+            <h2>{{ t("Current Guest List") }}</h2>
+            <div class="saved-list">
+                {% for response in responses %}
+                <article class="mini-card">
+                    <strong>{{ response.name }}</strong>
+                    <span class="muted">{{ response.location_name }}</span>
+                    <span class="muted">{% if response.has_car %}{{ t("Can drive") }}{% if response.vehicle_type == 'motorbike' %} · {{ t("Motorbike") }}{% endif %}{% else %}{{ t("Passenger only") }}{% endif %} · {{ response.role_tag }}</span>
+                </article>
+                {% endfor %}
+            </div>
+        </section>
+    </main>
+</body>
+</html>

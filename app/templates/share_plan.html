@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="{{ current_language }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ chosen_trip.driver_set_name }} - {{ t("Share Report") }}</title>
+    {% include "_brand_head.html" %}
+    <style>{{ shared_css | safe }}</style>
+    <style>
+        /* Report-only rules; everything else comes from style.css. */
+        .page {
+            max-width: 1080px;
+            display: grid;
+            gap: 18px;
+        }
+        /* This page's .page is the grid container, so it owns the exemption. */
+        .page > .panel {
+            margin-bottom: 0;
+        }
+        .badge-row, .action-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 12px;
+        }
+        .action {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px 16px;
+            font-family: var(--font-display);
+            font-weight: 700;
+            border: 2px solid var(--sign-green);
+            border-radius: var(--radius);
+            background: var(--sign-green);
+            color: #fff;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        .action.secondary {
+            background: var(--paper);
+            color: var(--sign-green);
+        }
+        .summary-block {
+            display: grid;
+            gap: 10px;
+        }
+        .share-map {
+            width: 100%;
+            min-height: 360px;
+        }
+        .legend-chip {
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+            display: inline-block;
+        }
+        .text-share {
+            width: 100%;
+            min-height: 180px;
+            font: inherit;
+        }
+        .report-hero {
+            border-color: var(--sign-green);
+        }
+        @media (max-width: 720px) {
+            .share-map { min-height: 280px; }
+        }
+    </style>
+</head>
+<body>
+    <main class="page">
+        {% include "_language_selector.html" %}
+        <section class="panel report-hero">
+            <p class="eyebrow">{{ t("Share Report") }}</p>
+            <h1>{{ chosen_trip.driver_set_name }}</h1>
+            <div class="badge-row">
+                <span class="badge">Fitness {{ '%.4f'|format(chosen_trip.fitness) }}</span>
+                <span class="badge">{{ chosen_trip.assignments|length }} {{ t("active cars") }}</span>
+                <span class="badge">{{ '%.2f'|format(chosen_trip.total_distance_km) }} km</span>
+                <span class="badge">EUR {{ '%.2f'|format(chosen_trip.total_cost_eur) }}</span>
+                {% if chosen_trip.plan_variant == 'meetup' %}<span class="badge">{{ t("Meetup pooling") }}</span>{% endif %}
+                {% if chosen_trip.plan_variant == 'meetup' %}<span class="badge">{{ t("Self-transfer") }} {{ '%.1f'|format(chosen_trip.meetup_total_self_transfer_km) }} km</span>{% endif %}
+                {% if destination %}<span class="badge">{{ t("Destination") }} {{ destination.name }}</span>{% endif %}
+            </div>
+            {% if chosen_trip.meetup_instructions %}
+            <div class="summary-block" style="margin-top:12px;">
+                {% for instruction in chosen_trip.meetup_instructions %}
+                <div class="muted">{{ instruction }}</div>
+                {% endfor %}
+            </div>
+            {% endif %}
+            <div class="action-row">
+                <a class="action" href="{{ whatsapp_url }}" target="_blank" rel="noopener">{{ t("Share via WhatsApp") }}</a>
+                <button class="action secondary" type="button" id="copy-share-text">{{ t("Copy Share Text") }}</button>
+                <a class="action secondary" href="/share/current?route_set_index={{ chosen_route_set_index }}&download=true">{{ t("Download HTML") }}</a>
+            </div>
+        </section>
+
+        <section class="panel">
+            <h2>{{ t("Share Summary") }}</h2>
+            <div class="summary-block">
+                <textarea id="share-summary" class="text-share" readonly>{{ share_summary }}</textarea>
+            </div>
+        </section>
+
+        <section class="panel">
+            <h2>{{ t("Route Overview") }}</h2>
+            <div class="share-map">{{ share_map_svg|safe }}</div>
+            <div class="map-legend">
+                <span><i class="legend-chip" style="background: var(--asphalt);"></i> {{ t("Destination") }}</span>
+                <span><i class="legend-chip" style="background: var(--sign-yellow);"></i> {{ t("Numbered pickups") }}</span>
+                <span><i class="legend-chip" style="background: var(--sign-green);"></i> {{ t("Driver route labels") }}</span>
+            </div>
+            <div class="route-legend">
+                {% for assignment in chosen_trip.assignments %}
+                <div class="route-legend-item">
+                    <div class="route-legend-main">
+                        <span class="route-swatch" style="background: {{ selected_route_set.routes[loop.index0].color if selected_route_set and selected_route_set.routes|length > loop.index0 else '#0E7C3F' }};"></span>
+                        <span>{{ optimization.participants[assignment.driver_index].name }}</span>
+                    </div>
+                    <span class="muted">
+                        {% if assignment.passenger_indices %}
+                        {{ t("Picks up") }} {% for passenger_index in assignment.passenger_indices %}{{ optimization.participants[passenger_index].name }}{% if not loop.last %}, {% endif %}{% endfor %}
+                        {% else %}
+                        {{ t("Solo drive") }}
+                        {% endif %}
+                    </span>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+
+        <section class="panel">
+            <h2>{{ t("Driver Routes") }}</h2>
+            <div class="route-grid">
+                {% for assignment in chosen_trip.assignments %}
+                <article class="result-card">
+                    <h3>{{ optimization.participants[assignment.driver_index].name }}</h3>
+                    <div class="badge-row">
+                        <span class="badge">{{ assignment.passenger_indices|length }} {{ t("passengers") }}</span>
+                        <span class="badge">{{ '%.2f'|format(assignment.route_distance_km) }} km</span>
+                        <span class="badge">EUR {{ '%.2f'|format(assignment.route_cost_eur) }}</span>
+                        <span class="badge">{{ t("Fuel EUR") }} {{ '%.2f'|format(assignment.fuel_cost_eur) }}</span>
+                        <span class="badge">{{ t("Estimated toll EUR") }} {{ '%.2f'|format(assignment.toll_cost_eur) }}</span>
+                    </div>
+                    <p>
+                        {% if assignment.passenger_indices %}
+                        {{ t("Picks up") }} {% for passenger_index in assignment.passenger_indices %}{{ optimization.participants[passenger_index].name }}{% if not loop.last %}, {% endif %}{% endfor %}
+                        {% else %}
+                        {{ t("Drives alone") }}
+                        {% endif %}
+                    </p>
+                    <div class="badge-row">
+                        {% if assignment.outbound_departure_time %}<span class="badge">{{ t("Departs") }} {{ assignment.outbound_departure_time }}</span>{% endif %}
+                        {% if assignment.destination_arrival_time %}<span class="badge">{{ t("Arrives") }} {{ assignment.destination_arrival_time }}</span>{% endif %}
+                        {% if assignment.return_departure_time %}<span class="badge">{{ t("Return") }} {{ assignment.return_departure_time }}</span>{% endif %}
+                        <span class="badge">EUR {{ '%.2f'|format(assignment.cost_per_person_eur) }}/person</span>
+                    </div>
+                    {% if assignment.pickup_schedule %}
+                    <ul class="stop-list">
+                        {% for item in assignment.pickup_schedule %}
+                        <li>{{ item }}</li>
+                        {% endfor %}
+                    </ul>
+                    {% endif %}
+                </article>
+                {% endfor %}
+            </div>
+        </section>
+    </main>
+
+    <script>
+        (function () {
+            const summaryField = document.getElementById("share-summary");
+            const copyButton = document.getElementById("copy-share-text");
+
+            if (copyButton && summaryField) {
+                copyButton.addEventListener("click", async () => {
+                    try {
+                        await navigator.clipboard.writeText(summaryField.value);
+                        copyButton.textContent = {{ t("Copied") | tojson }};
+                        window.setTimeout(() => { copyButton.textContent = {{ t("Copy Share Text") | tojson }}; }, 1200);
+                    } catch (_error) {
+                        summaryField.focus();
+                        summaryField.select();
+                    }
+                });
+            }
+        }());
+    </script>
+</body>
+</html>

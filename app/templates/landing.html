@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="{{ current_language }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Drivers Manager — {{ t("Group carpools, planned in minutes") }}</title>
+    <meta name="description" content="{{ t('Plan group carpools with smart routing, guest invite links, food stops along the route, and shared-ride impact metrics.') }}">
+    {% include "_brand_head.html" %}
+    <link rel="stylesheet" href="{{ url_for('static', path='/style.css') }}?v={{ static_asset_version }}">
+    <style>
+        .viaduct {
+            display: block;
+            width: 100%;
+            height: 40px;
+            margin: 8px 0 18px;
+        }
+        .landing-cta {
+            background: #fff;
+            color: var(--sign-green-deep);
+            border-color: #fff;
+        }
+        .landing-sign h1 {
+            font-size: clamp(2.2rem, 5vw, 3.6rem);
+        }
+        .sign-eyebrow {
+            color: #fff;
+        }
+        .landing-cta-row {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .landing-section-title {
+            text-align: center;
+            margin-bottom: 6px;
+        }
+        .landing-section-sub {
+            text-align: center;
+            max-width: 60ch;
+            margin: 0 auto 22px;
+        }
+        .landing-feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+            gap: 14px;
+        }
+        .landing-feature {
+            display: grid;
+            gap: 10px;
+            padding: 20px;
+            border-radius: var(--radius);
+            background: var(--paper);
+            border: 2px solid var(--line);
+            align-content: start;
+        }
+        .landing-steps {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 14px;
+            counter-reset: landing-step;
+        }
+        .landing-step {
+            position: relative;
+            display: grid;
+            gap: 8px;
+            padding: 20px 20px 20px 66px;
+            border-radius: var(--radius);
+            background: var(--paper);
+            border: 2px solid var(--line);
+        }
+        .landing-step::before {
+            counter-increment: landing-step;
+            content: counter(landing-step);
+            position: absolute;
+            left: 16px;
+            top: 18px;
+            display: grid;
+            place-items: center;
+            width: 36px;
+            height: 36px;
+            border-radius: var(--radius);
+            background: var(--sign-green);
+            color: #fff;
+            font-weight: 700;
+            font-family: var(--font-display);
+        }
+        .landing-impact {
+            text-align: center;
+        }
+        .landing-impact .impact-grid {
+            justify-content: center;
+            margin-top: 14px;
+        }
+        .landing-footer {
+            text-align: center;
+            color: var(--muted);
+            padding: 8px 0 22px;
+        }
+    </style>
+</head>
+<body>
+    <main class="page">
+        {% include "_pictograms.html" %}
+        <section class="sign sign-hero landing-sign">
+            <div class="sign-body">
+                <p class="eyebrow sign-eyebrow">Drivers Manager</p>
+                <h1>{{ t("Group carpools, planned in minutes") }}</h1>
+                <p>{{ t("One person sets the destination. Friends reply from a link on their phone. The optimizer picks the drivers, the routes, and even the food stop everyone voted for.") }}</p>
+                <div class="landing-cta-row">
+                    <a class="button-link landing-cta" href="/">{{ t("Open the planner") }}</a>
+                    <form method="post" action="/sample"><button type="submit" class="landing-cta">{{ t("Try it with demo data") }}</button></form>
+                </div>
+            </div>
+            <span class="sign-arrow" aria-hidden="true">➚</span>
+        </section>
+        <img class="viaduct" src="{{ url_for('static', path='/viaduct.svg') }}" alt="">
+
+        <section class="panel">
+            <h2 class="landing-section-title">{{ t("Why groups love it") }}</h2>
+            <p class="muted landing-section-sub">{{ t("Built from real friend-group trips: fewer cars, fair costs, zero spreadsheet fights.") }}</p>
+            <div class="landing-feature-grid">
+                <article class="landing-feature">
+                    <svg class="pic landing-pic" style="color: var(--sign-green)"><use href="#pic-car"/></svg>
+                    <strong>{{ t("Routes that think") }}</strong>
+                    <span class="muted">{{ t("An ant-colony optimizer scores every possible driver set on distance, seats, fuel type, and habits — then refines each pickup order.") }}</span>
+                </article>
+                <article class="landing-feature">
+                    <svg class="pic landing-pic" style="color: var(--sign-blue)"><use href="#pic-casello"/></svg>
+                    <strong>{{ t("Invites without accounts") }}</strong>
+                    <span class="muted">{{ t("Share one link, a QR code, or a WhatsApp message. Guests reply from their phone — no app install, no sign-up.") }}</span>
+                </article>
+                <article class="landing-feature">
+                    <svg class="pic landing-pic" style="color: var(--sign-brown)"><use href="#pic-burger"/></svg>
+                    <strong>{{ t("Food stops on the way") }}</strong>
+                    <span class="muted">{{ t("Burgers, kebab, pizza, or coffee along the actual route, with detour minutes shown — and the group votes on the stop.") }}</span>
+                </article>
+                <article class="landing-feature">
+                    <svg class="pic landing-pic" style="color: var(--sign-red)"><use href="#pic-vespa"/></svg>
+                    <strong>{{ t("Impact you can show") }}</strong>
+                    <span class="muted">{{ t("Every plan reports cars taken off the road, kilometers, euros, and CO2 saved versus everyone driving alone.") }}</span>
+                </article>
+            </div>
+        </section>
+
+        <section class="panel">
+            <h2 class="landing-section-title">{{ t("How it works") }}</h2>
+            <p class="muted landing-section-sub">{{ t("Three steps from idea to a shareable plan.") }}</p>
+            <div class="landing-steps">
+                <article class="landing-step">
+                    <strong>{{ t("Set the trip") }}</strong>
+                    <span class="muted">{{ t("Pick the destination on the map and add your crew — or let them add themselves through an invite link.") }}</span>
+                </article>
+                <article class="landing-step">
+                    <strong>{{ t("Run the optimizer") }}</strong>
+                    <span class="muted">{{ t("Compare candidate plans side by side: best score, cheapest, detour-aware, and meetup pooling variants.") }}</span>
+                </article>
+                <article class="landing-step">
+                    <strong>{{ t("Share the plan") }}</strong>
+                    <span class="muted">{{ t("Send drivers their pickup order and timing as a polished report, then save the trip to history.") }}</span>
+                </article>
+            </div>
+        </section>
+
+        <section class="panel landing-impact">
+            <h2 class="landing-section-title">{{ t("Less traffic, more road trip") }}</h2>
+            <p class="muted landing-section-sub">{{ t("A typical 8-person outing with Drivers Manager:") }}</p>
+            <div class="impact-grid">
+                <span class="impact-chip">🚗 6 {{ t("fewer cars") }}</span>
+                <span class="impact-chip">🛣️ ~90 {{ t("km saved") }}</span>
+                <span class="impact-chip">🌱 ~11 kg CO₂ {{ t("avoided") }}</span>
+            </div>
+            <div class="landing-cta-row" style="margin-top: 22px;">
+                <a class="button-link" href="/">{{ t("Start planning") }}</a>
+            </div>
+        </section>
+
+        <p class="landing-footer">{{ t("Runs locally, shares globally — your data stays on your machine.") }}</p>
+    </main>
+</body>
+</html>

@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="{{ current_language }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Drivers Manager - {{ t("Organizer login") }}</title>
+    {% include "_brand_head.html" %}
+    <link rel="stylesheet" href="{{ url_for('static', path='/style.css') }}?v={{ static_asset_version }}">
+    <style>
+        .login-shell {
+            min-height: 82vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .login-shell .viaduct {
+            max-width: 420px;
+        }
+        .login-card {
+            width: min(420px, 100%);
+            display: grid;
+            gap: 14px;
+            text-align: center;
+        }
+        .login-card h1 {
+            margin-bottom: 0;
+            font-size: 1.9rem;
+        }
+        .login-card .eyebrow {
+            /* .eyebrow is inline-flex, so text-align alone leaves it left in the grid. */
+            justify-self: center;
+        }
+        .login-card .plate {
+            justify-self: center;
+            font-size: 1.1rem;
+        }
+        .login-form {
+            display: grid;
+            gap: 12px;
+            text-align: left;
+        }
+        .login-hint {
+            font-size: 0.92rem;
+        }
+    </style>
+</head>
+<body>
+    <main class="page login-shell">
+        <img class="viaduct" src="{{ url_for('static', path='/viaduct.svg') }}" alt="">
+        <section class="panel login-card">
+            <a class="plate" href="/welcome" aria-label="Drivers Manager"><span class="plate-band" aria-hidden="true">I</span><span class="plate-text">DM</span></a>
+            <p class="eyebrow">Casello</p>
+            <h1>{{ t("Organizer login") }}</h1>
+            <p class="muted">{{ t("This planner is protected. Enter the organizer password to continue.") }}</p>
+            {% if login_error %}<p class="field-error" role="alert">{{ login_error }}</p>{% endif %}
+            <form method="post" action="/login" class="login-form">
+                <input type="hidden" name="next_target" value="{{ next_target }}">
+                <label>
+                    <span>{{ t("Password") }}</span>
+                    <input type="password" name="password" required autofocus autocomplete="current-password">
+                </label>
+                <button type="submit">{{ t("Log in") }}</button>
+            </form>
+            <p class="muted login-hint">{{ t("Guests don't need this: invite links keep working without a login.") }}</p>
+        </section>
+    </main>
+</body>
+</html>

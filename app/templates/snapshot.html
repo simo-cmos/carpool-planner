@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="{{ current_language }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ entry.trip_name }} - {{ t("Snapshot") }}</title>
+    {% include "_brand_head.html" %}
+    <link rel="stylesheet" href="{{ url_for('static', path='/style.css') }}">
+</head>
+<body class="snapshot-body">
+    <main class="page">
+        {% include "_language_selector.html" %}
+        <section class="panel">
+            <h1>{{ entry.trip_name }}</h1>
+            <p class="muted">{{ entry.trip_date or entry.created_at }}</p>
+            {% if entry.notes %}<p>{{ entry.notes }}</p>{% endif %}
+            {% if entry.result.best_result %}
+            <div class="badge-row">
+                <span class="badge">{{ t("Recommended plan:") }} {{ entry.result.best_result.driver_set_name }}</span>
+                <span class="badge">Fitness {{ '%.3f'|format(entry.result.best_result.fitness) }}</span>
+            </div>
+            {% endif %}
+        </section>
+        <section class="panel">
+            <h2>{{ t("Workspace Snapshot") }}</h2>
+            <p>{{ t("Participants") }}: {{ entry.snapshot.participants|length }}</p>
+            <p>{{ t("Destination") }}: {{ entry.snapshot.destination.name if entry.snapshot.destination else t('None') }}</p>
+        </section>
+        <section class="panel">
+            <h2>{{ t("Saved Results") }}</h2>
+            {% for trip in entry.result.trip_results %}
+            <article class="result-card">
+                <h3>{{ trip.driver_set_name }}</h3>
+                <div class="badge-row">
+                    <span class="badge">Fitness {{ '%.3f'|format(trip.fitness) }}</span>
+                    <span class="badge">{{ '%.1f'|format(trip.total_distance_km) }} km</span>
+                    <span class="badge">EUR {{ '%.2f'|format(trip.total_cost_eur) }}</span>
+                </div>
+            </article>
+            {% endfor %}
+        </section>
+    </main>
+</body>
+</html>

@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="{{ current_language }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ invite.trip_name }} - {{ t("Guest Form") }}</title>
+    {% include "_brand_head.html" %}
+    <link rel="stylesheet" href="{{ url_for('static', path='/style.css') }}">
+</head>
+<body>
+    <main class="page">
+        <div class="guest-invite-shell">
+            <header class="panel guest-invite-hero">
+                <div class="guest-invite-hero-top">
+                    {% include "_language_selector.html" %}
+                    <div class="guest-invite-hero-copy">
+                        <p class="eyebrow">{{ t("Guest Invites") }}</p>
+                        <h1>{{ invite.trip_name }}</h1>
+                        <p class="lede">{{ t("Share your trip details for this invite.") }}</p>
+                    </div>
+                </div>
+                <div class="guest-invite-hero-grid">
+                    <article class="guest-invite-route-card">
+                        <span class="guest-chip">{{ t("Destination") }}</span>
+                        <strong>{{ invite.destination_name }}</strong>
+                        <span class="muted">{{ invite.destination_address_text or (invite.destination_latitude ~ ', ' ~ invite.destination_longitude) }}</span>
+                    </article>
+                    <div class="guest-invite-meta-grid">
+                        {% if invite.target_arrival_time %}
+                        <article class="guest-mini-stat">
+                            <span>{{ t("Target arrival") }}</span>
+                            <strong>{{ invite.target_arrival_time }}</strong>
+                        </article>
+                        {% endif %}
+                        {% if invite.deadline_at %}
+                        <article class="guest-mini-stat">
+                            <span>{{ t("Reply deadline") }}</span>
+                            <strong>{{ invite.deadline_at }}</strong>
+                        </article>
+                        {% endif %}
+                        <article class="guest-mini-stat">
+                            <span>{{ t("Pickup plan") }}</span>
+                            <strong>{{ t("Home or meetup") }}</strong>
+                        </article>
+                    </div>
+                </div>
+            </header>
+
+            {% if field_error %}<section class="banner error">{{ field_error }}</section>{% endif %}
+
+            <div class="guest-invite-layout">
+                <form method="post" action="/invite/{{ invite.token }}" class="guest-invite-form" id="guest-invite-form">
+                    <input type="hidden" name="response_token" value="{{ response_data.response_token if response_data else '' }}">
+
+                    <section class="panel guest-form-section">
+                        <div class="guest-form-section-head">
+                            <span class="guest-step-badge">1</span>
+                            <div>
+                                <h2>{{ t("Your details") }}</h2>
+                                <p class="muted">{{ t("Start with the basics the organizer needs to place you on the route.") }}</p>
+                            </div>
+                        </div>
+                        <div class="guest-form-grid guest-form-grid-primary">
+                            <label>
+                                <span>{{ t("Name") }}</span>
+                                <input name="name" required value="{{ response_data.name if response_data else '' }}" placeholder="{{ t('Your full name') }}">
+                            </label>
+                            <label>
+                                <span>{{ t("Location Name") }}</span>
+                                <input name="location_name" value="{{ response_data.location_name if response_data else '' }}" placeholder="{{ t('Home, office, campus gate...') }}">
+                            </label>
+                            <label class="guest-form-span-2">
+                                <span>{{ t("Address") }}</span>
+                                <input name="address_text" value="{{ response_data.address_text if response_data else '' }}" placeholder="{{ t('Street, town, or parking area') }}">
+                            </label>
+                            <div class="guest-form-span-2 inline-actions">
+                                <button type="button" class="secondary" id="use-my-location">{{ t("Use my location") }}</button>
+                                <span class="muted" id="use-my-location-status" aria-live="polite"></span>
+                            </div>
+                        </div>
+                        <details class="guest-advanced-toggle">
+                            <summary>{{ t("Add exact map coordinates") }}</summary>
+                            <div class="guest-form-grid guest-form-grid-compact">
+                                <label><span>{{ t("Latitude") }}</span><input name="latitude" type="number" step="any" value="{{ response_data.latitude if response_data else '' }}"></label>
+                                <label><span>{{ t("Longitude") }}</span><input name="longitude" type="number" step="any" value="{{ response_data.longitude if response_data else '' }}"></label>
+                            </div>
+                        </details>
+                    </section>
+
+                    <section class="panel guest-form-section">
+                        <div class="guest-form-section-head">
+                            <span class="guest-step-badge">2</span>
+                            <div>
+                                <h2>{{ t("Pickup choice") }}</h2>
+                                <p class="muted">{{ t("Choose whether the driver should collect you at home or at a shared meetup point.") }}</p>
+                            </div>
+                        </div>
+                        <div class="guest-choice-strip" aria-hidden="true">
+                            <div class="guest-choice-card">
+                                <strong>{{ t("Home pickup") }}</strong>
+                                <span>{{ t("Best when you want a direct pickup.") }}</span>
+                            </div>
+                            <div class="guest-choice-card">
+                                <strong>{{ t("Meetup pickup") }}</strong>
+                                <span>{{ t("Great for park-and-ride areas, free parking, and EV chargers.") }}</span>
+                            </div>
+                        </div>
+                        <div class="guest-form-grid guest-form-grid-primary">
+                            <label class="guest-form-span-2">
+                                <span>{{ t("Pickup plan") }}</span>
+                                <select name="pickup_mode" id="pickup-mode-select">
+                                    <option value="home" {% if not response_data or response_data.pickup_mode != 'meetup' %}selected{% endif %}>{{ t("Pick me up from home") }}</option>
+                                    <option value="meetup" {% if response_data and response_data.pickup_mode == 'meetup' %}selected{% endif %}>{{ t("I can reach a meetup spot") }}</option>
+                                </select>
+                            </label>
+                            <label class="checkbox compact-checkbox guest-checkbox-card">
+                                <input name="pickup_flexible" type="checkbox" value="true" {% if not response_data or response_data.pickup_flexible %}checked{% endif %}>
+                                <span>{{ t("I am flexible and can move to a shared pickup point if the planner suggests one") }}</span>
+                            </label>
+                        </div>
+                        <div class="conditional-fields guest-meetup-card" id="meetup-fields">
+                            <div class="guest-form-section-subhead">
+                                <strong>{{ t("Meetup details") }}</strong>
+                                <span class="muted">{{ t("Only fill this in if you want pickup at a parking area, charging hub, or another rendezvous point instead of home.") }}</span>
+                            </div>
+                            <div class="guest-form-grid guest-form-grid-primary">
+                                <label class="guest-form-span-2">
+                                    <span>{{ t("Saved Meetup Spot") }}</span>
+                                    <select name="meetup_spot_id" id="meetup-spot-select">
+                                        <option value="">{{ t("Choose a saved meetup spot") }}</option>
+                                        {% for spot in saved_meetup_spots %}
+                                        <option
+                                            value="{{ spot.id }}"
+                                            data-name="{{ spot.name }}"
+                                            data-address="{{ spot.address_text or '' }}"
+                                            data-latitude="{{ spot.latitude }}"
+                                            data-longitude="{{ spot.longitude }}"
+                                            {% if response_data and response_data.meetup_spot_id|string == spot.id|string %}selected{% endif %}
+                                        >
+                                            {{ spot.name }}{% if spot.has_ev_charging %} · EV{% endif %}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </label>
+                                <label><span>{{ t("Meetup spot name") }}</span><input name="pickup_location_name" value="{{ response_data.pickup_location_name if response_data else '' }}" placeholder="Park & Ride Nord"></label>
+                                <label><span>{{ t("Meetup address") }}</span><input name="pickup_address_text" value="{{ response_data.pickup_address_text if response_data else '' }}" placeholder="{{ t('Parking area or charging hub') }}"></label>
+                            </div>
+                            <details class="guest-advanced-toggle">
+                                <summary>{{ t("Add meetup coordinates") }}</summary>
+                                <div class="guest-form-grid guest-form-grid-compact">
+                                    <label><span>{{ t("Meetup latitude") }}</span><input name="pickup_latitude" type="number" step="any" value="{{ response_data.pickup_latitude if response_data else '' }}"></label>
+                                    <label><span>{{ t("Meetup longitude") }}</span><input name="pickup_longitude" type="number" step="any" value="{{ response_data.pickup_longitude if response_data else '' }}"></label>
+                                </div>
+                            </details>
+                        </div>
+                    </section>
+
+                    <section class="panel guest-form-section">
+                        <div class="guest-form-section-head">
+                            <span class="guest-step-badge">3</span>
+                            <div>
+                                <h2>{{ t("Driving setup") }}</h2>
+                                <p class="muted">{{ t("Tell the organizer whether you can drive and what your car setup looks like.") }}</p>
+                            </div>
+                        </div>
+                        <div class="guest-form-grid guest-form-grid-primary">
+                            <label><span>{{ t("Driving preference") }}</span><select name="role_tag"><option value="standard" {% if not response_data or response_data.role_tag == 'standard' %}selected{% endif %}>{{ t("Okay either way") }}</option><option value="always_driver" {% if response_data and response_data.role_tag == 'always_driver' %}selected{% endif %}>{{ t("Prefer to drive") }}</option><option value="prefers_passenger" {% if response_data and response_data.role_tag == 'prefers_passenger' %}selected{% endif %}>{{ t("Prefer to ride") }}</option></select></label>
+                            <label class="checkbox compact-checkbox guest-checkbox-card"><input name="has_car" type="checkbox" value="true" {% if response_data and response_data.has_car %}checked{% endif %}><span>{{ t("I can drive (car or motorbike)") }}</span></label>
+                            <label><span>{{ t("Vehicle") }}</span><select name="vehicle_type">{% for value, label in vehicle_types.items() %}<option value="{{ value }}" {% if response_data and response_data.vehicle_type == value %}selected{% endif %}>{{ t(label) }}</option>{% endfor %}</select></label>
+                            <label><span>{{ t("Fuel type") }}</span><select name="fuel_type">{% for fuel_type in ['gasoline', 'diesel', 'lpg', 'methane', 'electric'] %}<option value="{{ fuel_type }}" {% if response_data and response_data.fuel_type == fuel_type %}selected{% endif %}>{{ fuel_type }}</option>{% endfor %}</select></label>
+                            <label><span>{{ t("Total seats") }}</span><input name="total_seats" type="number" min="2" value="{{ response_data.total_seats if response_data else '' }}"></label>
+                            <label><span>{{ t("Consumption (L/100km)") }}</span><input name="consumption_l_per_100km" type="number" step="any" value="{{ response_data.consumption_l_per_100km if response_data else '' }}"></label>
+                        </div>
+                    </section>
+
+                    <section class="panel guest-form-section">
+                        <div class="guest-form-section-head">
+                            <span class="guest-step-badge">4</span>
+                            <div>
+                                <h2>{{ t("Timing") }}</h2>
+                                <p class="muted">{{ t("Share your time window so the planner can avoid impossible pickups.") }}</p>
+                            </div>
+                        </div>
+                        <div class="guest-form-grid guest-form-grid-primary">
+                            <label><span>{{ t("Outbound earliest") }}</span><input name="outbound_earliest_time" type="time" value="{{ response_data.outbound_earliest_time if response_data else '' }}"></label>
+                            <label><span>{{ t("Outbound latest") }}</span><input name="outbound_latest_time" type="time" value="{{ response_data.outbound_latest_time if response_data else '' }}"></label>
+                            <label><span>{{ t("Return earliest") }}</span><input name="return_earliest_time" type="time" value="{{ response_data.return_earliest_time if response_data else '' }}"></label>
+                            <label><span>{{ t("Return latest") }}</span><input name="return_latest_time" type="time" value="{{ response_data.return_latest_time if response_data else '' }}"></label>
+                        </div>
+                    </section>
+
+                    <section class="panel guest-form-section">
+                        <div class="guest-form-section-head">
+                            <span class="guest-step-badge">5</span>
+                            <div>
+                                <h2>{{ t("Food stop vote") }}</h2>
+                                <p class="muted">{{ t("Optional and fun: vote for a pit stop along the way. The organizer sees the tally.") }}</p>
+                            </div>
+                        </div>
+                        <div class="food-vote-grid">
+                            {% for vote_value, vote_label in food_stop_options.items() %}
+                            <label class="food-vote-option">
+                                <input type="radio" name="food_stop_vote" value="{{ vote_value }}" {% if response_data and response_data.food_stop_vote == vote_value %}checked{% endif %}>
+                                <span>{{ vote_label if vote_value != 'no_stop' else '🚗 ' + t("No stop, drive straight") }}</span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                    </section>
+
+                    <section class="panel guest-submit-panel">
+                        <div>
+                            <h2>{{ t("Ready to send") }}</h2>
+                            <p class="muted">{{ t("You can update this form later with the same invite link if your plan changes.") }}</p>
+                        </div>
+                        <button type="submit">{{ t("Save my details") }}</button>
+                    </section>
+                </form>
+
+                <aside class="guest-invite-aside">
+                    <section class="panel guest-side-card">
+                        <p class="eyebrow">{{ t("Quick guide") }}</p>
+                        <h2>{{ t("How this form works") }}</h2>
+                        <ul class="guest-side-list">
+                            <li>{{ t("Share your normal pickup point first, then switch to meetup only if it helps the route.") }}</li>
+                            <li>{{ t("Flexible pickup lets the planner suggest a shared parking or charging stop.") }}</li>
+                            <li>{{ t("Car details matter only if you might drive, but keeping them filled helps compare plans faster.") }}</li>
+                        </ul>
+                    </section>
+                    <section class="panel guest-side-card guest-side-highlight">
+                        <p class="eyebrow">{{ t("Roadtrip vibe") }}</p>
+                        <h2>{{ t("Meetup spots work best for") }}</h2>
+                        <div class="guest-side-tags">
+                            <span>{{ t("Park and ride") }}</span>
+                            <span>{{ t("Free parking") }}</span>
+                            <span>{{ t("EV charging") }}</span>
+                            <span>{{ t("Easy rendezvous") }}</span>
+                        </div>
+                    </section>
+                </aside>
+            </div>
+        </div>
+    </main>
+    <script>
+        (function () {
+            const pickupModeSelect = document.getElementById("pickup-mode-select");
+            const meetupFields = document.getElementById("meetup-fields");
+            const meetupSpotSelect = document.getElementById("meetup-spot-select");
+            const meetupNameInput = document.querySelector('input[name="pickup_location_name"]');
+            const meetupAddressInput = document.querySelector('input[name="pickup_address_text"]');
+            const meetupLatitudeInput = document.querySelector('input[name="pickup_latitude"]');
+            const meetupLongitudeInput = document.querySelector('input[name="pickup_longitude"]');
+            let lastAutofill = null;
+            if (!pickupModeSelect || !meetupFields) return;
+
+            const meetupInputs = Array.from(meetupFields.querySelectorAll("input, select, textarea"));
+
+            function syncMeetupFields() {
+                const isMeetup = pickupModeSelect.value === "meetup";
+                meetupFields.hidden = !isMeetup;
+                meetupInputs.forEach((input) => {
+                    input.disabled = !isMeetup;
+                });
+            }
+
+            function autofillMeetupSpot() {
+                if (!meetupSpotSelect) return;
+                const selectedOption = meetupSpotSelect.options[meetupSpotSelect.selectedIndex];
+                const nextAutofill = selectedOption && selectedOption.value
+                    ? {
+                        name: selectedOption.dataset.name || "",
+                        address: selectedOption.dataset.address || "",
+                        latitude: selectedOption.dataset.latitude || "",
+                        longitude: selectedOption.dataset.longitude || "",
+                    }
+                    : null;
+
+                function applyAutofillValue(input, key) {
+                    if (!input) return;
+                    const currentValue = input.value.trim();
+                    const previousValue = lastAutofill ? String(lastAutofill[key] || "").trim() : "";
+                    const nextValue = nextAutofill ? String(nextAutofill[key] || "") : "";
+                    if (!currentValue || currentValue === previousValue) {
+                        input.value = nextValue;
+                    }
+                }
+
+                applyAutofillValue(meetupNameInput, "name");
+                applyAutofillValue(meetupAddressInput, "address");
+                applyAutofillValue(meetupLatitudeInput, "latitude");
+                applyAutofillValue(meetupLongitudeInput, "longitude");
+                lastAutofill = nextAutofill;
+            }
+
+            pickupModeSelect.addEventListener("change", syncMeetupFields);
+            if (meetupSpotSelect) {
+                meetupSpotSelect.addEventListener("change", autofillMeetupSpot);
+            }
+            syncMeetupFields();
+            autofillMeetupSpot();
+        }());
+
+        (function () {
+            const locateButton = document.getElementById("use-my-location");
+            const locateStatus = document.getElementById("use-my-location-status");
+            const addressInput = document.querySelector('input[name="address_text"]');
+            const latitudeInput = document.querySelector('input[name="latitude"]');
+            const longitudeInput = document.querySelector('input[name="longitude"]');
+            if (!locateButton) return;
+            if (!("geolocation" in navigator)) {
+                locateButton.hidden = true;
+                return;
+            }
+
+            function setStatus(message) {
+                if (locateStatus) locateStatus.textContent = message;
+            }
+
+            locateButton.addEventListener("click", () => {
+                setStatus("{{ t('Locating…') }}");
+                locateButton.disabled = true;
+                navigator.geolocation.getCurrentPosition(
+                    async (position) => {
+                        const latitude = position.coords.latitude.toFixed(6);
+                        const longitude = position.coords.longitude.toFixed(6);
+                        if (latitudeInput) latitudeInput.value = latitude;
+                        if (longitudeInput) longitudeInput.value = longitude;
+                        try {
+                            const response = await fetch(`/api/reverse-geocode?latitude=${latitude}&longitude=${longitude}`);
+                            const payload = await response.json();
+                            if (!payload.error && addressInput && payload.display_name) {
+                                addressInput.value = payload.display_name;
+                            }
+                        } catch (_error) {
+                            /* coordinates alone are enough for the organizer */
+                        }
+                        setStatus("{{ t('Location filled in.') }}");
+                        locateButton.disabled = false;
+                    },
+                    () => {
+                        setStatus("{{ t('Could not access your location. Type your address instead.') }}");
+                        locateButton.disabled = false;
+                    },
+                    { enableHighAccuracy: false, timeout: 12000, maximumAge: 60000 }
+                );
+            });
+        }());
+    </script>
+</body>
+</html>

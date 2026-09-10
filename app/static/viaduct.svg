@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 40" preserveAspectRatio="none" fill="none" stroke="#B9C0B6" stroke-width="2">
+  <path d="M0 8 H400"/>
+  <path d="M0 40 V22 A20 14 0 0 1 40 22 V40 M40 40 V22 A20 14 0 0 1 80 22 V40 M80 40 V22 A20 14 0 0 1 120 22 V40 M120 40 V22 A20 14 0 0 1 160 22 V40 M160 40 V22 A20 14 0 0 1 200 22 V40 M200 40 V22 A20 14 0 0 1 240 22 V40 M240 40 V22 A20 14 0 0 1 280 22 V40 M280 40 V22 A20 14 0 0 1 320 22 V40 M320 40 V22 A20 14 0 0 1 360 22 V40 M360 40 V22 A20 14 0 0 1 400 22 V40"/>
+  <path d="M0 8 V22 M400 8 V22"/>
+</svg>

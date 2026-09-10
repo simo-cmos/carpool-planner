@@ -1,0 +1,2293 @@
+:root {
+    --road: #F5F6F3;
+    --paper: #FFFFFF;
+    --paper-strong: #FFFFFF;
+    --paper-tint: #FAFBF9;
+    --ink: #1B1F23;
+    --muted: #5C6570;
+    --line: #D3D8D0;
+    --line-strong: #B9C0B6;
+    --sign-green: #0E7C3F;
+    --sign-green-deep: #0A5C2E;
+    /* Green as *text* on paper: the fill green is too dark to lighten and too
+       light to darken in dark mode, so text gets its own token. */
+    --sign-green-ink: var(--sign-green);
+    --sign-blue: #0B4F9C;
+    /* Blue as *text* on paper, same reason as --sign-green-ink. */
+    --sign-blue-ink: var(--sign-blue);
+    --sign-brown: #7A4A22;
+    --sign-yellow: #F2C230;
+    --sign-red: #C8102E;
+    --asphalt: #2A2D31;
+    --accent: var(--sign-green);
+    --accent-strong: var(--sign-green-deep);
+    --danger: var(--sign-red);
+    --success: var(--sign-green);
+    --radius: 6px;
+    --radius-xl: 6px;
+    --radius-lg: 6px;
+    --radius-md: 6px;
+    --radius-sm: 4px;
+    --shadow: none;
+    --shadow-soft: none;
+    --font-display: "Overpass", "Bahnschrift", "Segoe UI", system-ui, sans-serif;
+    --font-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+/* Any class that sets `display` outranks the [hidden] UA rule, which silently
+   broke the Plan tabs and the guest meetup fields. Keep this ahead of them. */
+[hidden] {
+    display: none !important;
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    margin: 0;
+    font-family: var(--font-body);
+    font-variant-numeric: tabular-nums;
+    color: var(--ink);
+    background: var(--road);
+    min-height: 100vh;
+}
+
+.page {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 36px 22px 56px;
+    padding-left: max(22px, env(safe-area-inset-left));
+    padding-right: max(22px, env(safe-area-inset-right));
+    padding-bottom: max(56px, env(safe-area-inset-bottom));
+}
+
+h1,
+h2,
+h3,
+h4,
+summary,
+button,
+.button-link,
+.route-toggle-title,
+.route-legend-main,
+.topbar-link,
+.ws-tabs [role="tab"] {
+    font-family: var(--font-display);
+}
+
+h1,
+h2,
+h3,
+h4 {
+    margin-top: 0;
+    letter-spacing: 0.005em;
+    color: var(--ink);
+}
+
+h1 { font-size: clamp(1.8rem, 3vw, 2.4rem); font-weight: 800; }
+h2 { font-size: 1.25rem; font-weight: 700; }
+h3 { font-size: 1.02rem; font-weight: 700; }
+
+.eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 6px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    font-size: 0.74rem;
+    font-weight: 700;
+}
+
+.lede,
+.muted,
+small.muted {
+    color: var(--muted);
+}
+
+.grid,
+.results-grid {
+    display: grid;
+    gap: 14px;
+}
+
+/* Still used by landing.html's hero card (app pages dropped their own hero in Task 3). */
+.hero-copy .lede {
+    max-width: 60ch;
+    font-size: 1.03rem;
+}
+
+.card,
+.panel,
+.banner,
+.result-card,
+.mini-card {
+    background: var(--paper);
+    border: 2px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: none;
+}
+
+.card,
+.panel,
+.banner,
+.result-card {
+    padding: 18px;
+}
+
+.panel {
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 14px;
+}
+
+.allow-floating-ui {
+    overflow: visible;
+}
+
+/* Kills the old rainbow top bars. */
+.panel::before,
+.result-card::before,
+.mini-card::before {
+    content: none;
+}
+
+.panel-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.home-action {
+    display: grid;
+    gap: 14px;
+    justify-items: start;
+}
+
+.card {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 140px;
+}
+
+.label {
+    color: var(--muted);
+}
+
+/* A compact green sign strip, not a side-tabbed card. */
+.pinned-summary {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: 18px;
+    padding: 10px 14px;
+    border-radius: var(--radius);
+    border-color: var(--sign-green);
+    background: var(--sign-green);
+    color: #fff;
+    box-shadow: inset 0 0 0 2px #fff, inset 0 0 0 4px var(--sign-green);
+}
+
+.banner.error,
+.banner.success {
+    margin-bottom: 20px;
+}
+
+.banner.error {
+    border-color: var(--sign-red);
+    color: var(--sign-red);
+}
+
+.banner.success {
+    border-color: var(--sign-green-ink);
+    color: var(--sign-green-ink);
+}
+
+.field-error {
+    color: var(--danger);
+    font-size: 0.92rem;
+    margin: 4px 0 0;
+}
+
+.pre-wrap {
+    white-space: pre-wrap;
+}
+
+details.collapsible > summary {
+    list-style: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding-right: 8px;
+    cursor: pointer;
+    font-size: 1.18rem;
+    font-weight: 700;
+    color: var(--ink);
+}
+
+details.collapsible > summary::after {
+    content: "+";
+    display: inline-grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-sm);
+    font-size: 1.15rem;
+    color: #fff;
+    background: var(--sign-green);
+    flex-shrink: 0;
+}
+
+details.collapsible[open] > summary::after {
+    content: "−";
+}
+
+.panel-body {
+    margin-top: 18px;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.participants-form {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+label {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    font-size: 0.95rem;
+    color: var(--ink);
+}
+
+label > span {
+    font-weight: 600;
+    font-size: 0.86rem;
+    color: var(--ink);
+}
+
+.checkbox {
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+    padding-top: 30px;
+}
+
+input,
+select,
+textarea,
+button {
+    font: inherit;
+}
+
+input,
+select,
+textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: var(--radius);
+    border: 2px solid var(--line);
+    background: var(--paper);
+    color: var(--ink);
+    transition: border-color 120ms ease;
+}
+
+/* Checkboxes and radios are not text fields: the 100% above stretched them
+   across the whole grid cell and pushed the box far from its label. */
+input[type="checkbox"],
+input[type="radio"] {
+    width: auto;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+    outline: none;
+    border-color: var(--sign-green);
+}
+
+textarea {
+    resize: vertical;
+}
+
+button,
+.button-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 44px;
+    padding: 10px 16px;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 0.95rem;
+    border: 2px solid var(--sign-green);
+    border-radius: var(--radius);
+    background: var(--sign-green);
+    color: #fff;
+    cursor: pointer;
+    text-decoration: none;
+    box-shadow: none;
+    transition: background 120ms ease, border-color 120ms ease;
+}
+
+button:hover,
+.button-link:hover {
+    background: var(--sign-green-deep);
+    border-color: var(--sign-green-deep);
+}
+
+button.secondary,
+.secondary-link {
+    background: var(--paper);
+    color: var(--sign-green-ink);
+}
+
+button.secondary:hover,
+.secondary-link:hover {
+    background: var(--paper-tint);
+    color: var(--sign-green-ink);
+}
+
+button.danger {
+    background: var(--sign-red);
+    border-color: var(--sign-red);
+    color: #fff;
+}
+
+button.danger:hover {
+    background: var(--sign-red);
+    border-color: var(--asphalt);
+}
+
+.button-big {
+    font-size: 1.1rem;
+    padding: 14px 22px;
+}
+
+/* The redesign left no base link colour, so bare links fell back to the
+   browser's blue — off-palette in light, and barely legible on the dark theme. */
+a {
+    color: inherit;
+    text-decoration-color: var(--sign-green-ink);
+    text-underline-offset: 3px;
+}
+
+button:focus-visible,
+.button-link:focus-visible,
+a:focus-visible,
+summary:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[role="tab"]:focus-visible {
+    outline: 3px solid var(--sign-yellow);
+    outline-offset: 2px;
+}
+
+button:disabled,
+.button-link[aria-disabled="true"] {
+    opacity: 0.55;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+.actions,
+.stack-form {
+    display: grid;
+    gap: 12px;
+}
+
+.grid,
+.results-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th,
+td {
+    padding: 13px 10px;
+    border-bottom: 1px solid var(--line);
+    text-align: left;
+    vertical-align: top;
+}
+
+th {
+    color: var(--muted);
+    font-size: 0.82rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.participant-table-wrap,
+.table-scroll {
+    width: 100%;
+    overflow-x: auto;
+    padding-bottom: 6px;
+}
+
+.participant-table {
+    min-width: 980px;
+}
+
+.result-card {
+    position: relative;
+    margin-top: 14px;
+}
+
+.best-plan-card {
+    border-color: var(--sign-green);
+}
+
+.share-map-svg,
+.share-map,
+.planner-map {
+    margin-top: 12px;
+    border-radius: var(--radius);
+    overflow: hidden;
+    border: 2px solid var(--line);
+    background: var(--paper);
+}
+
+.share-map-svg svg,
+.share-map svg {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+.share-map {
+    min-height: 360px;
+}
+
+.planner-map {
+    width: 100%;
+    min-height: 480px;
+}
+
+.map-heading h2 {
+    margin-bottom: 6px;
+}
+
+.map-legend,
+.legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 16px;
+    margin: 12px 0 14px;
+    color: var(--muted);
+}
+
+.map-legend span,
+.legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.legend-dot,
+.legend-chip,
+.route-swatch,
+.swatch {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.route-legend {
+    display: grid;
+    gap: 10px;
+    margin-top: 14px;
+}
+
+.route-legend-item {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: center;
+    padding: 12px 14px;
+    border-radius: var(--radius);
+    background: var(--paper);
+    border: 2px solid var(--line);
+}
+
+.route-legend-main {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+}
+
+.route-grid {
+    display: grid;
+    gap: 14px;
+    margin-top: 14px;
+}
+
+.stop-list {
+    margin: 12px 0 0;
+    padding-left: 18px;
+}
+
+.top-grid {
+    align-items: start;
+}
+
+.advanced-fields {
+    grid-column: 1 / -1;
+    padding: 14px 16px;
+    border: 2px dashed var(--line);
+    border-radius: var(--radius);
+    background: var(--paper-tint);
+}
+
+.advanced-fields summary {
+    cursor: pointer;
+    font-weight: 700;
+}
+
+.advanced-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+    margin-top: 14px;
+}
+
+.conditional-fields {
+    display: grid;
+    grid-template-columns: inherit;
+    gap: 14px;
+    grid-column: 1 / -1;
+    padding: 14px 16px;
+    border-radius: var(--radius);
+    background: var(--paper-tint);
+    border: 2px dashed var(--line);
+}
+
+.input-hint {
+    margin: 0;
+    font-size: 0.92rem;
+}
+
+.inline-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-top: 12px;
+}
+
+.mini-card {
+    display: grid;
+    gap: 8px;
+    padding: 16px;
+    margin-bottom: 10px;
+}
+
+.driver-message pre {
+    margin: 0;
+    font: inherit;
+    white-space: pre-wrap;
+}
+
+.dataset-tools-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    margin-bottom: 18px;
+}
+
+.dataset-tools-column {
+    display: grid;
+    gap: 14px;
+    align-content: start;
+}
+
+.compact-tool-card {
+    gap: 10px;
+    margin-bottom: 0;
+}
+
+.compact-saved-list {
+    display: grid;
+    gap: 10px;
+    margin: 0;
+}
+
+.compact-list-card {
+    margin-bottom: 0;
+}
+
+.compact-stack-form {
+    gap: 10px;
+}
+
+.tool-subsection {
+    border-radius: var(--radius);
+}
+
+.tool-subsection summary {
+    list-style: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    cursor: pointer;
+    font-weight: 700;
+    color: var(--ink);
+}
+
+.tool-subsection summary::-webkit-details-marker {
+    display: none;
+}
+
+.tool-subsection summary::after {
+    content: "+";
+    display: inline-grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    border-radius: var(--radius-sm);
+    border: 1.5px solid var(--line-strong);
+    color: var(--sign-green-ink);
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+
+.tool-subsection[open] summary::after {
+    content: "−";
+}
+
+.tool-subsection-body {
+    margin-top: 14px;
+    display: grid;
+    gap: 12px;
+}
+
+.compact-tool-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.8rem;
+    margin-bottom: 1rem;
+}
+
+.meetup-saved-list-toggle {
+    margin-top: 1rem;
+}
+
+.inactive-row {
+    opacity: 0.62;
+}
+
+.reorder-cell,
+.order-cell {
+    white-space: nowrap;
+}
+
+.drag-handle {
+    padding: 4px 8px;
+    min-width: 0;
+    min-height: 0;
+    border-radius: var(--radius-sm);
+    border: 1.5px solid var(--line-strong);
+    background: var(--paper);
+    color: var(--muted);
+    cursor: grab;
+}
+
+.dragging-row {
+    opacity: 0.35;
+}
+
+.order-badge {
+    display: inline-grid;
+    place-items: center;
+    min-width: 28px;
+    min-height: 28px;
+    padding: 0 8px;
+    border-radius: var(--radius-sm);
+    border: 1.5px solid var(--sign-green);
+    color: var(--sign-green-ink);
+    font-weight: 700;
+}
+
+.checklist {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.checklist span {
+    padding: 6px 10px;
+    border: 1.5px solid var(--line-strong);
+    border-radius: var(--radius-sm);
+    color: var(--muted);
+}
+
+.checklist span.done {
+    border-color: var(--sign-green);
+    background: #E7F3EC;
+    color: var(--sign-green-ink);
+}
+
+.checklist span.done::before {
+    /* \00a0, not a literal space: a space after a CSS escape only terminates it. */
+    content: "\2713\00a0";
+}
+
+.saved-list {
+    margin: 12px 0;
+}
+
+.pickup-rule-form {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+    gap: 12px;
+    align-items: end;
+    margin-top: 12px;
+}
+
+.pickup-rule-list {
+    display: grid;
+    gap: 10px;
+}
+
+.pickup-rule-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 14px;
+}
+
+.compact-checkbox {
+    padding-top: 0;
+    align-items: flex-start;
+}
+
+.favorite-card {
+    align-content: start;
+}
+
+/* Same palette as the map pins; the square dots mirror the square pins. */
+.driver-dot,
+.passenger-dot,
+.destination-dot,
+.selection-dot,
+.meetup-dot {
+    box-shadow: 0 0 0 1px var(--asphalt);
+}
+
+.driver-dot { background: var(--sign-green); }
+.passenger-dot { background: var(--sign-blue); }
+.destination-dot { background: var(--sign-green); border-radius: 2px; }
+.meetup-dot { background: var(--sign-blue); border-radius: 2px; }
+.selection-dot { background: var(--sign-yellow); }
+
+.route-toggles {
+    display: grid;
+    gap: 10px;
+}
+
+.route-toggle {
+    display: grid;
+    gap: 10px;
+    padding: 14px 16px;
+    border-radius: var(--radius);
+    border: 2px solid var(--line);
+    background: var(--paper);
+    transition: border-color 120ms ease;
+}
+
+.route-toggle:hover {
+    border-color: var(--sign-green);
+}
+
+.route-toggle-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+}
+
+.route-toggle-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    color: var(--ink);
+}
+
+.route-toggle input[type="checkbox"] {
+    inline-size: 18px;
+    block-size: 18px;
+    accent-color: var(--accent);
+}
+
+.route-toggle-badges,
+.badge-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.route-chip,
+.badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 8px;
+    border: 1.5px solid var(--line-strong);
+    border-radius: var(--radius-sm);
+    background: var(--paper);
+    color: var(--ink);
+    font-weight: 600;
+    font-size: 0.8rem;
+}
+
+.badge-warning {
+    border-color: var(--sign-yellow);
+    background: #FFF6D6;
+}
+
+.badge-cheapest {
+    border-color: var(--sign-green-ink);
+    color: var(--sign-green-ink);
+}
+
+.impact-strip {
+    margin-top: 14px;
+    padding: 14px 16px;
+    border-radius: var(--radius);
+    background: var(--paper);
+    border: 2px solid var(--sign-green);
+    display: grid;
+    gap: 10px;
+}
+
+.impact-title {
+    color: var(--sign-green-ink);
+    font-size: 0.95rem;
+}
+
+.impact-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.impact-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: var(--radius-sm);
+    background: var(--paper);
+    border: 1.5px solid var(--line-strong);
+    font-weight: 600;
+    font-size: 0.92rem;
+}
+
+.toast {
+    position: fixed;
+    right: 18px;
+    bottom: 18px;
+    z-index: 2000;
+    padding: 12px 16px;
+    border-radius: var(--radius);
+    border: 1px solid var(--line);
+    background: var(--asphalt);
+    color: #fff;
+    box-shadow: none;
+    opacity: 0;
+    transform: translateY(12px);
+    transition: opacity 180ms ease, transform 180ms ease;
+}
+
+.toast.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.toast-success {
+    background: var(--sign-green);
+}
+
+.toast-error {
+    background: var(--sign-red);
+}
+
+.map-toolbar {
+    display: flex;
+    align-items: end;
+    gap: 12px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.food-overlay-status {
+    min-height: 1.4em;
+    align-self: center;
+    font-size: 0.92rem;
+}
+
+.topbar {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 10px 0 18px;
+}
+.topbar-nav { display: flex; gap: 4px; flex: 1; }
+.topbar-link {
+    padding: 8px 14px;
+    border-radius: 6px;
+    font-family: "Overpass", "Bahnschrift", "Segoe UI", system-ui, sans-serif;
+    font-weight: 700;
+    color: var(--ink);
+    text-decoration: none;
+}
+.topbar-link.active { background: var(--sign-green); color: #fff; }
+.topbar-tools { display: flex; gap: 8px; align-items: center; }
+.plate {
+    display: inline-flex;
+    align-items: stretch;
+    border: 1.5px solid var(--asphalt);
+    border-radius: 4px;
+    overflow: hidden;
+    text-decoration: none;
+    font-family: "Overpass", "Bahnschrift", sans-serif;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+}
+.plate-band { background: var(--sign-blue); color: #fff; padding: 4px 5px; font-size: 0.7rem; display: grid; place-items: end; }
+.plate-text { background: #fff; color: var(--asphalt); padding: 4px 8px; }
+@media (max-width: 720px) {
+    .topbar-nav {
+        position: fixed;
+        inset: auto 0 0 0;
+        z-index: 40;
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 0;
+        background: var(--paper);
+        border-top: 2px solid var(--line);
+        padding: 4px max(4px, env(safe-area-inset-left)) max(4px, env(safe-area-inset-bottom));
+    }
+    .topbar-link { text-align: center; padding: 10px 2px; font-size: 0.82rem; }
+    .page { padding-bottom: 84px; }
+}
+
+.language-menu {
+    position: relative;
+    margin-left: auto;
+    flex-shrink: 0;
+}
+
+.language-menu[open] {
+    z-index: 80;
+}
+
+.language-menu-toggle {
+    list-style: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 50px;
+    height: 40px;
+    border-radius: var(--radius);
+    cursor: pointer;
+    border: 2px solid var(--line);
+    background: var(--paper);
+}
+
+.language-menu-toggle::-webkit-details-marker {
+    display: none;
+}
+
+.language-menu-flag {
+    width: 28px;
+    height: 20px;
+    display: block;
+    border-radius: 3px;
+}
+
+.language-menu-list {
+    position: absolute;
+    top: calc(100% + 12px);
+    right: 0;
+    min-width: 190px;
+    max-width: min(240px, calc(100vw - 28px));
+    max-height: min(70vh, 360px);
+    overflow: auto;
+    padding: 10px;
+    display: grid;
+    gap: 8px;
+    border-radius: var(--radius);
+    background: var(--paper);
+    border: 2px solid var(--line);
+}
+
+.language-menu-list form {
+    margin: 0;
+}
+
+.language-menu-option {
+    width: 100%;
+    justify-content: flex-start;
+    gap: 10px;
+    min-height: 44px;
+    padding: 10px 12px;
+    border: 2px solid transparent;
+    border-radius: var(--radius);
+    background: transparent;
+    color: var(--ink);
+    box-shadow: none;
+}
+
+.language-menu-option:hover {
+    background: var(--paper-tint);
+    border-color: var(--line);
+}
+
+.language-menu-option.active {
+    border-color: var(--sign-green);
+    color: var(--sign-green-ink);
+}
+
+.language-menu-option-flag {
+    width: 22px;
+    height: 16px;
+    display: block;
+    border-radius: 3px;
+    flex-shrink: 0;
+}
+
+.language-menu-option-label {
+    font-weight: 600;
+}
+
+.theme-toggle {
+    color: var(--ink);
+    min-height: 40px;
+    width: 44px;
+    padding: 0;
+    border-radius: var(--radius);
+    flex-shrink: 0;
+    border: 2px solid var(--line);
+    background: var(--paper);
+}
+
+.theme-toggle-icon::before {
+    content: "🌙";
+    font-size: 1.05rem;
+}
+
+:root[data-theme="dark"] .theme-toggle-icon::before {
+    content: "☀️";
+}
+
+.dataset-callout {
+    display: grid;
+    gap: 0.35rem;
+}
+
+.map-toolbar label {
+    min-width: 135px;
+}
+
+.search-box {
+    position: relative;
+    min-width: 300px;
+}
+
+.search-results {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    right: 0;
+    display: none;
+    background: var(--paper-strong);
+    border: 2px solid var(--line);
+    border-radius: var(--radius);
+    z-index: 1000;
+    overflow: hidden;
+}
+
+.search-results.open {
+    display: block;
+}
+
+.form-search-results {
+    top: calc(100% + 6px);
+}
+
+.search-result {
+    width: 100%;
+    text-align: left;
+    border-radius: 0;
+    background: transparent;
+    color: var(--ink);
+    padding: 12px 14px;
+    border: none;
+    border-bottom: 1px solid var(--line);
+    display: grid;
+    gap: 4px;
+    box-shadow: none;
+}
+
+.search-result:last-child {
+    border-bottom: none;
+}
+
+.search-result strong {
+    color: var(--ink);
+}
+
+.search-result span {
+    color: var(--muted);
+    font-size: 0.9rem;
+}
+
+.search-result:hover {
+    background: var(--paper-tint);
+}
+
+.autocomplete-field {
+    position: relative;
+    z-index: 3;
+}
+
+.autocomplete-field:focus-within {
+    z-index: 12;
+}
+
+#meetup-spot-form.prefill-target {
+    outline: 2px solid var(--sign-green);
+    border-radius: var(--radius);
+    padding: 8px;
+    margin: -8px;
+}
+
+.map-summary {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin-bottom: 0;
+    min-height: 42px;
+    padding: 14px 16px;
+    border: 2px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--paper);
+}
+
+/* Sign-coloured square pins: the map reads as motorway signage, not generic dots. */
+.map-pin div {
+    width: 30px;
+    height: 30px;
+    border-radius: 4px;
+    display: grid;
+    place-items: center;
+    color: #fff;
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 15px;
+    border: 2px solid #fff;
+    box-shadow: 0 0 0 1.5px var(--asphalt);
+}
+
+.pixel-raster-icon {
+    border-radius: 4px;
+    border: 2px solid #fff;
+    overflow: hidden;
+    background-color: var(--sign-brown);
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+}
+
+.driver-pin div { background: var(--sign-green); }
+.passenger-pin div { background: var(--sign-blue); border-radius: 50%; }
+.selection-pin div { background: var(--sign-yellow); color: var(--asphalt); }
+/* The destination flag keeps its own art; only the ring takes the sign colour. */
+.pixel-raster-icon.destination-raster-icon { background-color: transparent; border-color: var(--sign-green); }
+.meetup-pin div { background: var(--sign-blue); font-size: 18px; }
+.kebab-pin div,
+.kfc-pin div,
+.mcdonalds-pin div,
+.burger-king-pin div,
+.pizza-pin div,
+.cafe-pin div { background: var(--sign-brown); }
+
+/* Not a .map-pin child (app.js builds it standalone), so it keeps its own box. */
+.pickup-order-pin div {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    background: var(--sign-yellow);
+    color: var(--asphalt);
+    font-family: var(--font-display);
+    font-weight: 800;
+    border: 2px solid #fff;
+}
+
+/* Hairline separator between stacked assignments, not a side accent. */
+.assignment {
+    display: grid;
+    gap: 4px;
+    padding: 12px 0;
+    border-top: 1px solid var(--line);
+}
+
+.assignment-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+/* Signature motorway components. Placed after .assignment so .sign-card wins the
+   padding/border tie-break without needing extra specificity. */
+.sign {
+    background: var(--sign-green);
+    color: #fff;
+    border-radius: 8px;
+    box-shadow: inset 0 0 0 3px #fff, inset 0 0 0 6px var(--sign-green);
+    padding: 26px 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    margin-bottom: 14px;
+}
+
+.sign h1,
+.sign h2,
+.sign h3,
+.sign h4 {
+    color: #fff;
+    margin: 0;
+}
+
+.sign p {
+    margin: 6px 0 0;
+    color: #fff;
+    font-family: var(--font-display);
+    font-weight: 600;
+}
+
+.sign-arrow {
+    font-size: clamp(2.4rem, 5vw, 3.6rem);
+    line-height: 1;
+}
+
+.sign-hero {
+    animation: sign-pass 240ms ease-out;
+}
+
+@keyframes sign-pass {
+    from { transform: translateX(28px); opacity: 0; }
+    to { transform: none; opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sign-hero { animation: none; }
+}
+
+.sign-card {
+    padding: 14px 16px;
+    border-radius: 6px;
+    border-top: 0;
+    margin: 0;
+    display: grid;
+    gap: 10px;
+}
+
+.sign-card .sign-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+}
+
+.sign-card .sign-towns {
+    display: grid;
+    gap: 4px;
+    font-family: var(--font-display);
+    font-weight: 600;
+}
+
+.sign-card .sign-towns div {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.sign-card .sign-towns > div > span:last-child {
+    font-variant-numeric: tabular-nums;
+}
+
+.result-card .sign-card + .sign-card {
+    margin-top: 8px;
+}
+
+.km-strip {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.km-marker {
+    background: var(--paper);
+    border: 2px solid var(--asphalt);
+    border-top-width: 14px;
+    border-radius: 6px;
+    padding: 12px 14px 14px;
+    display: grid;
+    gap: 2px;
+    text-align: center;
+}
+
+.km-marker strong {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 1.9rem;
+    line-height: 1;
+}
+
+.km-marker span {
+    color: var(--muted);
+    font-size: 0.82rem;
+}
+
+.km-marker-pending {
+    border-color: var(--sign-yellow);
+}
+
+@media (max-width: 720px) {
+    .km-strip { grid-template-columns: repeat(2, 1fr); }
+}
+
+.targa {
+    display: inline-flex;
+    align-items: stretch;
+    border: 1.5px solid var(--asphalt);
+    border-radius: 4px;
+    overflow: hidden;
+    font-family: var(--font-display);
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+    line-height: 1;
+    background: #fff;
+    color: var(--asphalt);
+}
+
+.targa::before {
+    content: "";
+    width: 7px;
+    background: var(--sign-blue);
+}
+
+.targa-driver::before {
+    background: var(--sign-green);
+}
+
+.targa span {
+    padding: 5px 8px;
+}
+
+.service-eyebrow {
+    color: var(--sign-brown);
+}
+
+.service-eyebrow::before {
+    content: "🍴 ";
+}
+
+.badge-service {
+    border-color: var(--sign-brown);
+    color: var(--sign-brown);
+}
+
+.explanation-list {
+    display: grid;
+    gap: 8px;
+    margin-top: 14px;
+}
+
+.explanation-list p {
+    margin: 0;
+    color: var(--muted);
+}
+
+.popup-edit {
+    margin-top: 8px;
+    width: 100%;
+}
+
+.snapshot-body {
+    background: var(--road);
+}
+
+.guest-invite-shell {
+    display: grid;
+    gap: 18px;
+}
+
+.guest-invite-hero {
+    padding: 26px;
+}
+
+.guest-invite-hero-top {
+    display: flex;
+    justify-content: space-between;
+    gap: 18px;
+    align-items: start;
+}
+
+.guest-invite-hero-copy {
+    display: grid;
+    gap: 10px;
+    max-width: 720px;
+}
+
+.guest-invite-hero-copy h1 {
+    margin-bottom: 0;
+    font-size: clamp(2.1rem, 4vw, 3.3rem);
+}
+
+.guest-invite-hero-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.35fr) minmax(240px, 0.9fr);
+    gap: 14px;
+    margin-top: 18px;
+}
+
+.guest-invite-route-card,
+.guest-mini-stat {
+    padding: 18px;
+    border-radius: var(--radius);
+    background: var(--paper-tint);
+    border: 2px solid var(--line);
+}
+
+.guest-invite-route-card {
+    display: grid;
+    gap: 8px;
+}
+
+.guest-invite-route-card strong {
+    font-size: 1.15rem;
+}
+
+.guest-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: fit-content;
+    padding: 4px 10px;
+    border-radius: var(--radius-sm);
+    background: var(--sign-green);
+    color: #fff;
+    font-size: 0.82rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.guest-invite-meta-grid {
+    display: grid;
+    gap: 12px;
+}
+
+.guest-mini-stat span {
+    display: block;
+    color: var(--muted);
+    font-size: 0.85rem;
+    margin-bottom: 6px;
+}
+
+.guest-mini-stat strong {
+    font-size: 1rem;
+}
+
+.guest-invite-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) minmax(250px, 0.55fr);
+    gap: 18px;
+    align-items: start;
+}
+
+.guest-invite-form,
+.guest-invite-aside {
+    display: grid;
+    gap: 16px;
+}
+
+.guest-form-section,
+.guest-side-card,
+.guest-submit-panel {
+    padding: 24px;
+}
+
+.guest-form-section-head {
+    display: flex;
+    gap: 14px;
+    align-items: start;
+    margin-bottom: 18px;
+}
+
+.guest-form-section-head h2,
+.guest-submit-panel h2,
+.guest-side-card h2 {
+    margin-bottom: 6px;
+}
+
+.guest-step-badge {
+    display: inline-grid;
+    place-items: center;
+    width: 42px;
+    height: 42px;
+    border-radius: var(--radius);
+    background: var(--sign-green);
+    color: #fff;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.guest-form-grid {
+    display: grid;
+    gap: 14px;
+}
+
+.guest-form-grid-primary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.guest-form-grid-compact {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.guest-form-span-2 {
+    grid-column: span 2;
+}
+
+.guest-choice-strip {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.guest-choice-card {
+    display: grid;
+    gap: 6px;
+    padding: 16px;
+    border-radius: var(--radius);
+    border: 2px solid var(--line);
+    background: var(--paper);
+}
+
+.guest-choice-card strong {
+    color: var(--ink);
+}
+
+.guest-choice-card span {
+    color: var(--muted);
+    font-size: 0.92rem;
+    line-height: 1.45;
+}
+
+.guest-checkbox-card {
+    padding: 14px 16px;
+    border-radius: var(--radius);
+    border: 2px solid var(--line);
+    background: var(--paper);
+}
+
+.guest-checkbox-card input {
+    width: auto;
+    margin-top: 2px;
+}
+
+.guest-form-section-subhead {
+    display: grid;
+    gap: 6px;
+}
+
+.guest-form-section-subhead strong {
+    font-size: 1rem;
+}
+
+.guest-meetup-card {
+    border-style: solid;
+    border-color: var(--sign-green);
+}
+
+.food-vote-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 10px;
+}
+
+.food-vote-option {
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    border-radius: var(--radius);
+    border: 2px solid var(--line);
+    background: var(--paper);
+    cursor: pointer;
+    transition: border-color 120ms ease, background 120ms ease;
+}
+
+.food-vote-option:hover {
+    border-color: var(--sign-green);
+}
+
+.food-vote-option input[type="radio"] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--accent);
+    flex-shrink: 0;
+}
+
+.food-vote-option:has(input:checked) {
+    border-color: var(--sign-green);
+    background: #E7F3EC;
+}
+
+.food-vote-tally {
+    display: grid;
+    gap: 10px;
+}
+
+.food-vote-tally-row {
+    display: grid;
+    grid-template-columns: minmax(150px, 220px) minmax(0, 1fr) auto;
+    gap: 12px;
+    align-items: center;
+}
+
+.food-vote-tally-bar {
+    display: block;
+    height: 14px;
+    border: 1.5px solid var(--line-strong);
+    border-radius: var(--radius-sm);
+    /* The green fill is sized by --vote-share; the track stays paper. */
+    background: var(--sign-green) no-repeat, var(--paper);
+    background-size: var(--vote-share, 0%) 100%, 100% 100%;
+}
+
+.food-vote-tally-count {
+    font-weight: 700;
+    color: var(--sign-green-ink);
+    min-width: 24px;
+    text-align: right;
+}
+
+.guest-advanced-toggle {
+    margin-top: 14px;
+    padding: 14px 16px;
+    border-radius: var(--radius);
+    border: 2px dashed var(--line);
+    background: var(--paper-tint);
+}
+
+.guest-advanced-toggle summary {
+    cursor: pointer;
+    font-weight: 700;
+    color: var(--sign-green-ink);
+}
+
+.guest-advanced-toggle[open] .guest-form-grid {
+    margin-top: 14px;
+}
+
+.guest-submit-panel {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    align-items: center;
+    border-color: var(--sign-green);
+}
+
+.guest-submit-panel button {
+    min-width: 190px;
+}
+
+.guest-side-list {
+    display: grid;
+    gap: 12px;
+    margin: 0;
+    padding-left: 18px;
+    color: var(--muted);
+}
+
+.guest-side-list li {
+    line-height: 1.5;
+}
+
+.guest-side-highlight {
+    background: var(--sign-green);
+    border-color: var(--sign-green);
+}
+
+.guest-side-highlight h2,
+.guest-side-highlight .eyebrow,
+.guest-side-highlight .muted {
+    color: #fff;
+}
+
+.guest-side-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.guest-side-tags span {
+    padding: 6px 10px;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: #fff;
+    border: 1.5px solid #fff;
+    font-size: 0.9rem;
+}
+
+.workspace {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 440px;
+    gap: 16px;
+    align-items: start;
+}
+
+.workspace-map {
+    position: sticky;
+    top: 12px;
+    display: grid;
+    gap: 10px;
+    max-height: calc(100vh - 24px);
+    /* Without this the route toggles under the map are simply cut off. */
+    overflow-y: auto;
+}
+
+.workspace-map .planner-map {
+    /* Overrides the shared 480px min-height so the sticky column fits one screen. */
+    min-height: 0;
+    margin-top: 0;
+    height: min(52vh, 560px);
+}
+
+.workspace-map .legend {
+    margin: 0;
+}
+
+.workspace-side {
+    min-width: 0;
+    display: grid;
+    gap: 14px;
+}
+
+.ws-tabs {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    border: 2px solid var(--line);
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.ws-tabs [role="tab"] {
+    background: var(--paper);
+    color: var(--ink);
+    border: 0;
+    border-right: 2px solid var(--line);
+    border-radius: 0;
+    padding: 12px 6px;
+    font-weight: 700;
+}
+
+.ws-tabs [role="tab"]:last-child {
+    border-right: 0;
+}
+
+.ws-tabs [role="tab"][aria-selected="true"] {
+    background: var(--sign-green);
+    color: #fff;
+}
+
+.ws-panel {
+    display: grid;
+    gap: 14px;
+}
+
+/* These containers bring their own gap; the panel margin would double it. */
+:where(.grid, .results-grid, .ws-panel, .guest-invite-shell, .guest-invite-form, .guest-invite-aside, .page-grid) > .panel {
+    margin-bottom: 0;
+}
+
+/* The side column is too narrow for the two-column page grids. */
+.ws-panel .grid,
+.ws-panel .results-grid,
+.ws-panel .dataset-tools-grid {
+    grid-template-columns: 1fr;
+}
+
+/* Grid children default to min-width:auto, so the 980px participant table
+   inflated the whole 440px side column; let them shrink and scroll instead. */
+.ws-panel > *,
+.ws-panel .grid > *,
+.ws-panel .results-grid > * {
+    min-width: 0;
+}
+
+.ws-panel .participants-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (max-width: 1080px) {
+    .workspace {
+        grid-template-columns: 1fr;
+    }
+
+    .workspace-map {
+        position: static;
+        max-height: none;
+    }
+
+    .workspace-map .planner-map {
+        height: 42vh;
+    }
+
+    .guest-invite-layout,
+    .guest-invite-hero-grid,
+    .dataset-tools-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 920px) {
+    .grid,
+    .results-grid,
+    .form-grid,
+    .participants-form,
+    .advanced-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .map-toolbar,
+    .inline-actions,
+    .assignment-head,
+    .route-toggle-head {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .map-toolbar label {
+        min-width: 0;
+    }
+
+    .search-box {
+        min-width: 0;
+    }
+
+    .pickup-rule-form,
+    .pickup-rule-card {
+        grid-template-columns: 1fr;
+        display: grid;
+    }
+
+    .page {
+        padding: 18px 14px 34px;
+    }
+
+    .language-menu {
+        margin-left: 0;
+        margin-right: 0;
+    }
+
+    .language-menu-list {
+        right: 0;
+        left: auto;
+        top: calc(100% + 10px);
+    }
+
+    .participant-table {
+        min-width: 0;
+    }
+
+    .participant-table thead {
+        display: none;
+    }
+
+    .participant-table,
+    .participant-table tbody,
+    .participant-table tr,
+    .participant-table td {
+        display: block;
+        width: 100%;
+    }
+
+    .participant-table tbody {
+        display: grid;
+        gap: 12px;
+    }
+
+    .participant-table tr {
+        padding: 14px;
+        border: 2px solid var(--line);
+        border-radius: var(--radius);
+        background: var(--paper);
+    }
+
+    .participant-table td {
+        border: none;
+        padding: 8px 0;
+    }
+
+    .participant-table td::before {
+        content: attr(data-label);
+        display: block;
+        margin-bottom: 4px;
+        color: var(--muted);
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+    }
+
+    .participant-table .reorder-cell::before,
+    .participant-table .order-cell::before {
+        margin-bottom: 6px;
+    }
+
+    .participant-table .inline-actions {
+        margin-top: 0;
+    }
+
+    .guest-invite-hero,
+    .guest-form-section,
+    .guest-side-card,
+    .guest-submit-panel {
+        padding: 18px;
+    }
+
+    .guest-invite-hero-top,
+    .guest-submit-panel,
+    .guest-form-section-head {
+        flex-direction: column;
+    }
+
+    .guest-form-grid-primary,
+    .guest-form-grid-compact,
+    .guest-choice-strip {
+        grid-template-columns: 1fr;
+    }
+
+    .guest-form-span-2 {
+        grid-column: auto;
+    }
+
+    .guest-submit-panel button {
+        width: 100%;
+        min-width: 0;
+    }
+}
+
+/* ==================================================================
+   Dark theme ("night drive") — activated via data-theme="dark".
+   Only the tokens move; sign colours stay the same (spec 3.1). The
+   rules below exist solely to repair hardcoded #fff/#000 text.
+   ================================================================== */
+
+:root[data-theme="dark"] {
+    --road: #1B1D20;
+    --paper: #24272B;
+    --paper-strong: #24272B;
+    --paper-tint: #2B2F34;
+    --ink: #F2F3EF;
+    --muted: #A9B0B6;
+    --line: #3A3F45;
+    --line-strong: #4A5057;
+    --sign-green: #0E7C3F;
+    --sign-green-deep: #0A5C2E;
+    --sign-green-ink: #5BC98A;
+    --sign-blue-ink: #7FB3F5;
+    --sign-brown: #C48A5A;
+}
+
+:root[data-theme="dark"] .banner.error {
+    color: #F27285;
+    border-color: #F27285;
+}
+
+:root[data-theme="dark"] .checklist span.done {
+    background: #12331F;
+    color: #8FD8B8;
+}
+
+:root[data-theme="dark"] .food-vote-option:has(input:checked) {
+    background: #12331F;
+}
+
+:root[data-theme="dark"] .km-marker {
+    border-color: var(--line-strong);
+}
+
+:root[data-theme="dark"] .km-marker.km-marker-pending {
+    border-color: var(--sign-yellow);
+}
+
+:root[data-theme="dark"] .badge-warning {
+    background: #3A3216;
+}
+
+:root[data-theme="dark"] .planner-map .leaflet-tile {
+    filter: brightness(0.82) contrast(1.05) saturate(0.85);
+}
+
+:root[data-theme="dark"] .plate-text {
+    /* The plate keeps its real-world white face in both themes. */
+    color: var(--asphalt);
+}
+
+/* Short inline hint with the full explanation in the title attribute. */
+.hint {
+    border-bottom: 1px dotted currentColor;
+    cursor: help;
+    opacity: 0.75;
+    font-size: 0.85rem;
+}
+
+/* ==================================================================
+   Pictograms, side rails, the Home road strip, and help mode.
+   ================================================================== */
+
+.pic { width: 1em; height: 1em; display: inline-block; vertical-align: -0.15em; fill: currentColor; }
+.pic-wide, .pic-car, .pic-vespa { width: 1.6em; }
+.landing-pic { font-size: 34px; margin-bottom: 4px; }
+
+/* Decorative sign squares in the empty margins of wide screens only. */
+.rail { position: fixed; top: 150px; display: none; gap: 14px; pointer-events: none; z-index: 0; }
+.rail-left { left: 22px; }
+.rail-right { right: 22px; }
+@media (min-width: 1460px) { .rail { display: grid; } }
+.rail-sign {
+    width: 54px;
+    height: 54px;
+    border-radius: 6px;
+    display: grid;
+    place-items: center;
+    color: #fff;
+    font: 800 1.6rem/1 var(--font-display);
+    background: var(--sign-blue);
+    box-shadow: inset 0 0 0 2px #fff, inset 0 0 0 4px var(--sign-blue);
+}
+.rail-sign-blue { background: var(--sign-blue); box-shadow: inset 0 0 0 2px #fff, inset 0 0 0 4px var(--sign-blue); }
+.rail-sign-brown { background: var(--sign-brown); box-shadow: inset 0 0 0 2px #fff, inset 0 0 0 4px var(--sign-brown); }
+.rail-sign-green { background: var(--sign-green); box-shadow: inset 0 0 0 2px #fff, inset 0 0 0 4px var(--sign-green); }
+.rail-sign .pic { font-size: 30px; }
+
+/* Home road strip: the CSS loop below is the no-JS / reduced-motion fallback; app.js swaps it
+   for random traffic with varying speeds. */
+.road-strip { position: relative; margin-top: 18px; height: 124px; overflow: hidden; }
+.road-strip::before {
+    content: "";
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    height: 46px;
+    border-radius: 6px;
+    background: var(--asphalt);
+    border: 2px solid var(--line-strong);
+}
+.road-strip::after {
+    content: "";
+    position: absolute;
+    left: 14px; right: 14px; bottom: 22px;
+    border-top: 3px dashed #fff;
+    opacity: 0.8;
+}
+.road-lane { position: absolute; bottom: 20px; left: 0; display: flex; gap: 48px; align-items: flex-end; color: var(--sign-green); transform: translateX(-240px); animation: drive 26s linear infinite; }
+.road-lane .pic-car { width: 88px; height: 56px; }
+.road-lane .pic-vespa { width: 76px; height: 50px; color: var(--sign-red); }
+@keyframes drive { from { transform: translateX(-240px); } to { transform: translateX(100vw); } }
+@media (prefers-reduced-motion: reduce) { .road-lane { animation: none; transform: translateX(36px); } }
+.road-lane-live { right: 0; bottom: 6px; display: block; height: 0; transform: none; animation: none; }
+.road-vehicle { position: absolute; left: 0; bottom: 0; width: 88px; height: 55px; will-change: transform; }
+/* White perimeter so asphalt-coloured bodies and every wheel stay visible against the asphalt road. */
+.road-lane .pic, .road-vehicle, .postino-ride .pic { filter: drop-shadow(1.5px 0 0 #fff) drop-shadow(-1.5px 0 0 #fff) drop-shadow(0 1.5px 0 #fff) drop-shadow(0 -1.5px 0 #fff); }
+.road-vehicle-bus, .road-vehicle-truck, .road-vehicle-icecream-van { width: 104px; height: 65px; }
+.road-vehicle-limo { width: 176px; }
+.road-vehicle-ufo { bottom: 44px; animation: hover 1.6s ease-in-out infinite alternate; }
+@keyframes hover { from { margin-bottom: 0; } to { margin-bottom: 10px; } }
+.road-sign {
+    position: absolute;
+    right: 14px; top: 6px; z-index: 1;
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 8px 14px;
+    border-radius: 6px;
+    background: var(--sign-brown);
+    color: #fff;
+    font: 700 0.95rem/1 var(--font-display);
+    box-shadow: inset 0 0 0 2px #fff, inset 0 0 0 4px var(--sign-brown);
+}
+.road-sign .pic { font-size: 22px; }
+:root[data-theme="dark"] .road-strip::before { background: #111316; }
+
+/* Share page post office: the postino rides in, drops a letter in the cassetta postale and rides off. */
+.post-strip .road-sign { right: auto; left: 14px; }
+.postbox { position: absolute; right: 70px; bottom: 60px; width: 48px; height: 48px; color: var(--sign-red); transform-origin: 50% 100%; }
+.postino-ride { position: absolute; left: -100px; bottom: 20px; width: 88px; height: 55px; color: var(--sign-blue); animation: postino-ride 24s infinite; }
+.postino-ride .postino { width: 88px; height: 55px; }
+.post-letter { position: absolute; left: 22px; bottom: 26px; width: 20px; height: 20px; color: var(--sign-yellow); opacity: 0; animation: post-letter 24s infinite; }
+@keyframes postino-ride {
+    0% { left: -100px; animation-timing-function: ease-out; }
+    42%, 62% { left: calc(100% - 200px); animation-timing-function: ease-in; }
+    100% { left: 100%; }
+}
+@keyframes post-letter {
+    0%, 44% { opacity: 0; transform: none; }
+    46% { opacity: 1; }
+    56% { opacity: 1; transform: translate(74px, -44px); }
+    58%, 100% { opacity: 0; transform: translate(74px, -44px); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .postino-ride { animation: none; left: calc(100% - 200px); }
+    .post-letter { display: none; }
+}
+.post-flight { position: fixed; width: 28px; height: 28px; color: var(--sign-yellow); pointer-events: none; z-index: 50; }
+
+/* Letters: airmail border, a stamp and a postmark in the corner. */
+.letter { position: relative; padding-right: 118px; border: 4px solid transparent; border-image: repeating-linear-gradient(-45deg, var(--sign-red) 0 10px, var(--paper) 10px 20px, var(--sign-blue) 20px 30px, var(--paper) 30px 40px) 4; }
+.letter .stamp { position: absolute; top: 8px; right: 10px; font-size: 56px; line-height: 0; color: var(--sign-green); }
+.letter .postmark {
+    position: absolute; top: 22px; right: 46px;
+    width: 64px; height: 64px; padding: 8px;
+    display: grid; place-items: center; text-align: center; overflow: hidden;
+    border: 2px solid var(--asphalt); border-radius: 50%;
+    box-shadow: inset 0 0 0 4px var(--paper), inset 0 0 0 5.5px var(--asphalt);
+    font: 700 8px/1.15 var(--font-display); color: var(--asphalt);
+    transform: rotate(-14deg); opacity: 0.75;
+}
+.empty-postbox .pic { font-size: 28px; color: var(--sign-red); vertical-align: -0.35em; margin-right: 4px; }
+button .pic { vertical-align: -0.2em; }
+
+/* Help mode: the blue "i" sign renders every heading tooltip inline and opens the page guide. */
+.help-toggle {
+    width: 38px; height: 38px; min-height: 38px; padding: 0;
+    border-radius: 6px;
+    background: var(--sign-blue); border-color: var(--sign-blue); color: #fff;
+    font: 800 1.15rem/1 var(--font-display);
+    box-shadow: inset 0 0 0 2px #fff, inset 0 0 0 4px var(--sign-blue);
+}
+.help-toggle[aria-pressed="false"] { background: var(--paper); color: var(--sign-blue-ink); border-color: var(--sign-blue-ink); box-shadow: none; }
+.guide { display: none; }
+body.show-help .guide { display: block; }
+.guide summary { cursor: pointer; font-weight: 700; }
+.guide ul { margin: 10px 0 0; padding-left: 20px; display: grid; gap: 6px; }
+.guide p { margin: 10px 0 0; font-size: 0.85rem; }
+body.show-help :is(h2, h3, summary, p, strong)[title]::after {
+    content: attr(title);
+    display: block;
+    margin-top: 4px;
+    font: 400 0.85rem/1.4 var(--font-body);
+    color: var(--muted);
+    text-transform: none;
+    letter-spacing: 0;
+}
+
+/* Ant trail beside the optimizer headings (the planner is an ant colony). */
+.ant-trail { display: inline-flex; gap: 3px; margin-left: 12px; color: var(--muted); font-size: 18px; vertical-align: middle; }
+.ant-trail .pic { animation: march 1.6s ease-in-out infinite alternate; }
+.ant-trail .pic:nth-child(2) { animation-delay: 0.25s; }
+.ant-trail .pic:nth-child(3) { animation-delay: 0.5s; }
+@keyframes march { from { transform: translateX(0); } to { transform: translateX(-4px); } }
+@media (prefers-reduced-motion: reduce) { .ant-trail .pic { animation: none; } }
+
+/* Motorbike */
+.sign-note { font-size: 0.8rem; opacity: 0.9; margin-left: 6px; }
+
+/* Settings: solver drop-down hint cards (the selected algorithm is highlighted). */
+.solver-hints {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 10px;
+}
+
+.solver-hint {
+    padding: 10px 12px;
+    border: 1.5px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--paper);
+    opacity: 0.72;
+}
+
+.solver-hint.active {
+    border-color: var(--sign-green);
+    box-shadow: inset 0 0 0 1px var(--sign-green);
+    opacity: 1;
+}
+
+.solver-hint strong {
+    display: block;
+    margin-bottom: 6px;
+}
+
+.solver-bars {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 4px 8px;
+    margin: 0 0 8px;
+    font-size: 0.85rem;
+    color: var(--muted);
+}
+
+.solver-bars dt,
+.solver-bars dd {
+    margin: 0;
+}
+
+.solver-bars meter {
+    width: 100%;
+    height: 10px;
+}
+
+.solver-hint p {
+    margin: 4px 0 0;
+    font-size: 0.9rem;
+}
+
+.solver-pro::before {
+    content: "\2713 ";
+    color: var(--sign-green-ink);
+    font-weight: 700;
+}
+
+.solver-con::before {
+    content: "\2717 ";
+    color: var(--muted);
+    font-weight: 700;
+}
