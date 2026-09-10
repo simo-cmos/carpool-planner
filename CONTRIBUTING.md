@@ -25,6 +25,25 @@ python -m unittest discover -s tests
 
 All 127 should pass. CI runs the same command on Python 3.11 and 3.12.
 
+## Layout
+
+```text
+app/       FastAPI routes, templates, static assets, services
+core/      Routing and optimization logic, no web dependencies
+scripts/   Windows helpers for the app, tunnels and notifications
+tests/     Automated tests
+legacy/    The original desktop prototype, kept for reference
+demo/      Synthetic demo workspace
+```
+
+## Debugging
+
+Set `DMPROJECT_DEBUG=1` for request timings, source locations on each log line, and
+verbose traces through optimization, geocoding and SQL. Logs are written to `logs/`.
+
+Set `DMPROJECT_DATA_DIR` to point at a throwaway folder when you want a clean database
+without touching your real one.
+
 ## Things worth knowing
 
 - **Never commit real personal data.** `data/` and `logs/` are gitignored and must stay that

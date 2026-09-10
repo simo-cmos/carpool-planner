@@ -3,60 +3,34 @@
 [![CI](https://github.com/simo-cmos/carpool-planner/actions/workflows/ci.yml/badge.svg)](https://github.com/simo-cmos/carpool-planner/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-Self-hosted web app for planning carpools: manage participants on a map, choose drivers,
-optimize routes, collect guest responses, and share trips through public links.
+Eight friends, one concert, four cars — who drives, who rides with whom, and what's the
+shortest way to collect everyone? Carpool Planner works that out, collects the guests'
+own pickup points through a shareable link, and shows what the shared ride saved.
 
-Everything runs on your own machine and stores data in a local SQLite file. No account,
-no cloud service, no telemetry.
+Self-hosted: it runs on your machine and stores everything in a local SQLite file. No
+account, no cloud service, no telemetry. The app calls itself *Drivers Manager* — same
+project, older name.
 
-> **On the name.** The repository is `carpool-planner` — that's what people search for.
-> The app calls itself **Drivers Manager**, and its licence-plate mark reads `DM`. Same
-> project; one name is for finding it, the other is for using it. Internal identifiers
-> (`DMPROJECT_DATA_DIR`, `dmproject.db`, the `dmproject-workspace` backup format) keep the
-> older prefix on purpose — they are data contracts, and renaming them would invalidate
-> workspace files people have already exported.
+## What it does
 
-## Overview
-
-- `🗺️` Interactive trip planning with destination, participants, and map markers
-- `🚗` Driver selection and passenger assignment
-- `🧠` Route optimization with shareable trip results (local search by default; simulated annealing, ant colony and exhaustive search selectable under Settings → Advanced optimizer)
-- `🍔` Fast-food, restaurant, and coffee search along the optimized routes with per-stop detour estimates
-- `🗳️` Guests vote on the food stop from the invite form; organizers see the tally
-- `🌙` Light and dark theme with a one-click toggle (follows your system preference by default)
-- `✨` Pitch-ready landing page at [http://127.0.0.1:8000/welcome](http://127.0.0.1:8000/welcome)
-- `🔐` Optional organizer password (Settings → Security): admin pages then require login, while guest invite links keep working without one
-- `🌱` Shared-ride impact summary: cars, km, EUR, and CO2 saved vs everyone driving alone
-- `🔗` Guest and admin public links through Cloudflare Quick Tunnels, with QR codes, copy buttons, and WhatsApp sharing
-- `🔔` Desktop notifications for public-link activity
-- `📱` Installable as a smartphone/desktop app (PWA): open the app in a mobile browser and choose "Add to Home Screen"
-- `🌐` Organizer interface (Home, Plan, Share, Trips, Settings) is translated into Italian, French, and Spanish; flash/status/error messages are currently English-only
-
-## Pages
-
-The organizer app is five pages:
-
-- **Home** (`/`) — where tonight's trip stands.
-- **Plan** (`/plan`) — map, people, places, rules, and results (tabs: `people`, `places`, `rules`, `results`).
-- **Share** (`/share`) — guest invites and the plan to send.
-- **Trips** (`/trips`) — load or delete past trips.
-- **Settings** (`/settings`) — defaults and notifications.
-
-The older URLs still work: `/setup` redirects to `/plan?tab=people`, `/planning` to `/plan?tab=results`,
-`/guest-links` to `/share`, and `/history` to `/trips`.
-
-Outside the organizer app: `/welcome` (landing page), `/login` (when an organizer password is set),
-`/share/current` (the public trip report), and `/invite/<token>` (the guest form).
-
-## Design
-
-Autostrada visual system — see `docs/superpowers/specs/2026-09-09-autostrada-redesign-design.md`.
+- 🗺️ Plan a trip on a map: destination, participants, who has a car and how many seats
+- 🚗 Choose drivers and assign passengers
+- 🧠 Optimize routes — local search by default, with simulated annealing, ant colony and
+  exhaustive search under Settings → Advanced optimizer
+- 🔗 Invite guests by link: they add their own pickup point and time window, no account needed
+- 🍔 Find food stops along the route, with the detour each one costs
+- 🗳️ Let guests vote on the stop; organizers see the tally
+- 🌱 See the impact: cars, km, EUR and CO₂ saved against everyone driving alone
+- 🔐 Optional organizer password — admin pages require login, guest links keep working
+- 📱 Installable as a phone or desktop app, with light and dark themes
+- 🌐 Organizer interface in English, Italian, French and Spanish (status and error
+  messages are still English-only)
 
 ## Quick Start
 
 Requires Python 3.11 or newer.
 
-### macOS / Linux
+**macOS / Linux**
 
 ```bash
 python -m venv .venv
@@ -64,235 +38,64 @@ python -m venv .venv
 .venv/bin/python -m uvicorn app.main:app --reload
 ```
 
-Open [http://127.0.0.1:8000](http://127.0.0.1:8000).
-
-The Windows helper scripts below add background running, desktop notifications and
-tunnel management; on other platforms run `uvicorn` directly as above.
-
-### Windows
-
-From `cmd.exe`, in the repo folder:
+**Windows** — `start-app.cmd` creates the virtualenv, installs dependencies, and runs the
+app in the background so it survives closing the terminal:
 
 ```bat
-start-app.cmd
+start-app.cmd              :: status-app.cmd and stop-app.cmd to check and stop it
+start-app.cmd -Port 8010   :: also -BindHost 0.0.0.0, -DataDir data
 ```
 
-That creates `.venv`, installs dependencies on first run, and starts the app plus the desktop
-notifier in the background. Open [http://127.0.0.1:8000](http://127.0.0.1:8000).
-Use `status-app.cmd` and `stop-app.cmd` to check on it and shut it down.
+Either way, open <http://127.0.0.1:8000>.
 
-For a foreground dev server with auto-reload:
+## Demo data
 
-```bash
-.venv\Scripts\python -m uvicorn app.main:app --reload
-```
-
-## Demo Data
-
-To see the app populated without entering anyone's details, import the demo workspace:
-
-1. Start the app and open Settings.
-2. Under Workspace, choose Import and select `demo/demo-workspace.json`.
-
-It contains eight fictional participants around Bologna and Modena, with a destination
-set, enough to run driver selection and route optimization end to end.
+To see it populated without entering anyone's details, start the app, open **Settings →
+Workspace → Import**, and choose `demo/demo-workspace.json`. That's eight fictional
+participants around Bologna and a destination — enough to run driver selection and
+optimization end to end.
 
 Importing replaces the current workspace, so export first if you have real data in it.
 
-The file is generated by `scripts/generate_demo_data.py`, which drives the app's own
-service layer. Regenerate it with that script rather than editing the JSON by hand.
+## Sharing a trip
 
-## Windows Background Mode
-
-If you want the app to keep working after closing VS Code or PowerShell, use the Windows launcher scripts from `cmd.exe`:
+The app is local, so guests need a public URL to reach the invite form. `start-tunnel.cmd`
+opens a Cloudflare Quick Tunnel and writes the URL straight into the app's settings:
 
 ```bat
-cd /d path\to\carpool-planner
-start-app.cmd
-status-app.cmd
-stop-app.cmd
+start-tunnel.cmd -Mode guest    :: the invite link for participants
+start-tunnel.cmd -Mode admin    :: organizer access away from the machine
 ```
 
-Useful options:
+`status-tunnel.cmd` and `stop-tunnel.cmd` take the same `-Mode`. Requires
+[cloudflared](https://developers.cloudflare.com/cloudflare-tunnel/) on your PATH. A quick
+tunnel URL lasts as long as the process — restart it and Cloudflare usually hands you a
+new one.
 
-```bat
-start-app.cmd -Port 8010
-start-app.cmd -BindHost 0.0.0.0
-start-app.cmd -DataDir data
-```
+The Share page turns that into per-guest links with QR codes and WhatsApp sharing. If you
+expose the admin tunnel, set an organizer password first under Settings → Security.
 
-This starts:
-
-- the FastAPI app in the background
-- the background notifier process
-- log files under `logs\`
-
-## Public Links
-
-You can expose the app with Cloudflare Quick Tunnels and keep those links alive after closing the terminal.
-
-Guest link:
-
-```bat
-start-tunnel.cmd -Mode guest
-status-tunnel.cmd -Mode guest
-stop-tunnel.cmd -Mode guest
-```
-
-Admin link:
-
-```bat
-start-tunnel.cmd -Mode admin
-status-tunnel.cmd -Mode admin
-stop-tunnel.cmd -Mode admin
-```
-
-Notes:
-
-- the generated URL is saved under `logs\cloudflare-tunnel-guest.url` or `logs\cloudflare-tunnel-admin.url`
-- the app automatically writes the fresh tunnel URLs into the Guest/Admin URL fields
-- quick tunnel URLs stay valid while the tunnel process is running
-- if you restart a quick tunnel, Cloudflare usually gives you a new URL
-
-## Notifications
-
-When the app is started with `start-app.cmd`, desktop notifications appear for public-link activity:
-
-- `👥` guest invite opened
-- `📝` guest response submitted or updated
-- `🛠️` admin public-link activity
-
-Localhost usage does not trigger these public-link notifications.
-
-## Typical Workflow
-
-1. Open the app locally.
-2. Set the destination.
-3. Add participants and mark candidate drivers.
-4. Run driver selection and optimization.
-5. Review routes, costs, and assignments.
-6. Create guest/admin public links if needed.
-
-## Developer Notes
-
-Install dev/test dependencies first:
-
-```bash
-.venv\Scripts\python -m pip install -r requirements-dev.txt
-```
-
-Run the main test suite:
-
-```bash
-.venv\Scripts\python -m unittest tests.test_web_app -v
-.venv\Scripts\python -m unittest tests.test_apca_refinement -v
-```
-
-Quick smoke test:
-
-```bash
-.venv\Scripts\python -m tests.test_check
-```
-
-Main folders:
-
-```text
-app/       FastAPI app, templates, static assets, services
-core/      Optimization and domain logic
-scripts/   Windows helper scripts for app, tunnels, and notifications
-tests/     Automated tests
-legacy/    Original desktop prototype
-```
-
-## Debugging
-
-The app already includes structured logging, so most debugging starts with the logs in `logs\`.
-
-Enable verbose debug logging in a developer terminal:
-
-```bat
-set DMPROJECT_DEBUG=1
-python -m uvicorn app.main:app --reload
-```
-
-PowerShell equivalent:
-
-```powershell
-$env:DMPROJECT_DEBUG = "1"
-python -m uvicorn app.main:app --reload
-```
-
-Important log files:
-
-- `logs\<timestamp>.log`: main structured app log created by `core/logging_config.py`
-- `logs\app-server.out.log`: stdout from `start-app.cmd` background runs
-- `logs\app-server.err.log`: stderr from background runs
-- `logs\app-notifier.out.log`: background notifier output
-- `logs\app-notifier.err.log`: notifier errors
-
-What you get in debug mode:
-
-- request timing logs
-- source file and function name on each log line
-- verbose traces for optimization, geocoding, SQL writes, map payloads, and notifications
-
-Quick checks:
-
-```bash
-.venv\Scripts\python -m tests.test_check
-.venv\Scripts\python -m unittest tests.test_web_app -v
-```
-
-Tip:
-
-- set `DMPROJECT_DATA_DIR` to use a temporary SQLite data folder while debugging
-- notification debugging lives in `app/notifier_watcher.py` and `scripts/show_notification.ps1`
-
-## Troubleshooting
-
-Port `8000` already in use:
-
-```bat
-netstat -ano | findstr :8000
-taskkill /PID <pid> /F
-```
-
-Check app status:
-
-```bat
-status-app.cmd
-```
-
-Check tunnel status:
-
-```bat
-status-tunnel.cmd -Mode guest
-status-tunnel.cmd -Mode admin
-```
+When the app is started with `start-app.cmd`, you also get desktop notifications when a
+guest opens an invite or sends a response. Tunnels and notifications are Windows-only for
+now; the app itself runs anywhere Python does.
 
 ## Releases
 
-Releases are named after the people who worked out this problem before there were
-computers fast enough to care.
-
-| Release | Named for |
-| --- | --- |
-| `v0.1.0` — **Dantzig** | George Dantzig and John Ramser, whose 1959 paper *The Truck Dispatching Problem* introduced what is now called the vehicle routing problem — assign a fleet to customers and find the shortest set of routes. That is, near enough, what this app does with a group of friends and their cars. |
-
-Names ahead in the queue, roughly following the literature: Clarke & Wright (the 1964
-savings heuristic), Lin & Kernighan (edge-swapping local search, 1973), Christofides
-(1976), Kirkpatrick (simulated annealing, 1983) and Dorigo (ant colony optimization,
-1992). The last two are already selectable under Settings → Advanced optimizer.
+Releases are named after the people who worked this problem out before there were
+computers fast enough to care. **v0.1.0 "Dantzig"** is for George Dantzig and John Ramser,
+whose 1959 paper *The Truck Dispatching Problem* introduced what we now call vehicle
+routing — give a fleet a set of stops, find the shortest set of routes. Near enough what
+this does, with friends instead of trucks.
 
 ## Contributing
 
-Issues and pull requests are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for setup
-and the house rules. Please report security issues privately, as described in
-[SECURITY.md](SECURITY.md).
+Issues and pull requests are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for setup,
+tests and house rules, and [SECURITY.md](SECURITY.md) for reporting vulnerabilities
+privately.
 
-One rule worth repeating here: **never commit real personal data.** Participant home
-addresses and coordinates are personal data, `data/` and `logs/` are gitignored, and the
-tests use synthetic locations on purpose.
+One rule worth repeating here: **never commit real personal data.** Home addresses and
+coordinates are personal data, `data/` and `logs/` are gitignored, and the tests use
+synthetic locations on purpose.
 
 ## License
 
