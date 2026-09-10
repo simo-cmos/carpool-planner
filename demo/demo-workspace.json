@@ -244,7 +244,13 @@
         "time_preferences_summary": "Fully flexible timing"
       }
     ],
-    "destination": null,
+    "destination": {
+      "name": "Arena Parco Nord, Bologna",
+      "latitude": 44.5253,
+      "longitude": 11.362,
+      "address_text": "Via Stalingrado 81, Bologna",
+      "target_arrival_time": "20:30"
+    },
     "settings": {
       "map_center": {
         "latitude": 44.6471,

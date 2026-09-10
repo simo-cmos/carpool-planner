@@ -11,6 +11,9 @@ Self-hosted: it runs on your machine and stores everything in a local SQLite fil
 account, no cloud service, no telemetry. The app calls itself *Drivers Manager* — same
 project, older name.
 
+![The Plan page: the map with both optimized routes, and the Results tab showing driver
+scores and candidate driver sets](docs/screenshots/hero-plan.png)
+
 ## What it does
 
 - 🗺️ Plan a trip on a map: destination, participants, who has a car and how many seats
@@ -25,6 +28,26 @@ project, older name.
 - 📱 Installable as a phone or desktop app, with light and dark themes
 - 🌐 Organizer interface in English, Italian, French and Spanish (status and error
   messages are still English-only)
+
+## Screenshots
+
+Home keeps tonight's trip to one screen and one next action:
+
+![Home page: destination sign, trip counters and the next action](docs/screenshots/home.png)
+
+![Traffic driving along the road strip at the bottom of the home page](docs/screenshots/home-road.gif)
+
+Share turns the plan into one message per driver, ready for WhatsApp:
+
+![Share page: per-driver pickup messages with copy and WhatsApp buttons](docs/screenshots/share.png)
+
+The share report is the whole plan on one page — route overview, per-driver legs, costs:
+
+![Share report: route overview map, driver routes, distances and costs](docs/screenshots/share-report.png)
+
+Guests get a link, not an account, and fill it in from their phone:
+
+<img src="docs/screenshots/invite-mobile.png" alt="Guest invite form on a phone: destination, pickup choice, driving setup, food stop vote" width="360">
 
 ## Quick Start
 
