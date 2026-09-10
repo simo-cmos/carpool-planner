@@ -9,6 +9,13 @@ optimize routes, collect guest responses, and share trips through public links.
 Everything runs on your own machine and stores data in a local SQLite file. No account,
 no cloud service, no telemetry.
 
+> **On the name.** The repository is `carpool-planner` — that's what people search for.
+> The app calls itself **Drivers Manager**, and its licence-plate mark reads `DM`. Same
+> project; one name is for finding it, the other is for using it. Internal identifiers
+> (`DMPROJECT_DATA_DIR`, `dmproject.db`, the `dmproject-workspace` backup format) keep the
+> older prefix on purpose — they are data contracts, and renaming them would invalidate
+> workspace files people have already exported.
+
 ## Overview
 
 - `🗺️` Interactive trip planning with destination, participants, and map markers
@@ -262,6 +269,20 @@ Check tunnel status:
 status-tunnel.cmd -Mode guest
 status-tunnel.cmd -Mode admin
 ```
+
+## Releases
+
+Releases are named after the people who worked out this problem before there were
+computers fast enough to care.
+
+| Release | Named for |
+| --- | --- |
+| `v0.1.0` — **Dantzig** | George Dantzig and John Ramser, whose 1959 paper *The Truck Dispatching Problem* introduced what is now called the vehicle routing problem — assign a fleet to customers and find the shortest set of routes. That is, near enough, what this app does with a group of friends and their cars. |
+
+Names ahead in the queue, roughly following the literature: Clarke & Wright (the 1964
+savings heuristic), Lin & Kernighan (edge-swapping local search, 1973), Christofides
+(1976), Kirkpatrick (simulated annealing, 1983) and Dorigo (ant colony optimization,
+1992). The last two are already selectable under Settings → Advanced optimizer.
 
 ## Contributing
 
